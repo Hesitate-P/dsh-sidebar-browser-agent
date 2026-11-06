@@ -2,7 +2,7 @@
 
 给 DeepSeek Harness 右侧栏的**原生浏览器**加上 Agent 可操作能力。
 
-![工作原理](https://raw.githubusercontent.com/Hesitate-P/dsh-sidebar-browser-agent/main/assets/how-it-works.svg)
+![工作原理](https://raw.githubusercontent.com/Hesitate-P/dsh-sidebar-browser-agent/refs/heads/main/assets/how-it-works.svg)
 
 ## 做什么
 

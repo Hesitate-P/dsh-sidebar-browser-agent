@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.11
+
+- Fix the README hero image URL: the `main/...` raw path was cached as a 404
+  right after the first push; the canonical `refs/heads/main/...` URL renders
+  on GitHub and on the npm page.
+
 ## 0.2.10
 
 - README is now just what the plugin does and its limits, with a hero diagram
