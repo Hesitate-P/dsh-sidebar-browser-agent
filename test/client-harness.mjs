@@ -268,14 +268,26 @@ const webview = {
   focused: false,
   loadUrlCalls: [],
   reloadCalls: 0,
+  zoomFactor: 1,
+  captureCalls: [],
   async executeJavaScript(sourceText) {
     return await guestEval(sourceText)
   },
   sendInputEvent(event) {
     inputEvents.push(event)
   },
-  async capturePage() {
+  async capturePage(rect) {
+    this.captureCalls.push(rect === undefined ? null : rect)
     return makeImage(1024, 768)
+  },
+  getZoomFactor() {
+    return this.zoomFactor
+  },
+  setZoomFactor(next) {
+    this.zoomFactor = next
+  },
+  getBoundingClientRect() {
+    return { x: 0, y: 0, width: 1024, height: 768, left: 0, top: 0, right: 1024, bottom: 768 }
   },
   getURL() {
     return 'https://example.test/page'
@@ -388,6 +400,13 @@ function createSidebarMock() {
       const tabs = sessions.get(mounted) ?? []
       const tab = tabs.find((candidate) => candidate.tabId === activeId)
       return tab === undefined ? undefined : { id: tab.tabId, kind: tab.kind }
+    },
+    expanded: false,
+    isExpanded() {
+      return this.expanded
+    },
+    toggleExpanded() {
+      this.expanded = !this.expanded
     },
     setMounted(next) {
       mounted = next
@@ -640,6 +659,114 @@ async function main() {
   const shot = await send({ id: 'p9', action: 'screenshot', sessionId: 'session-1', tabId: tab.tabId })
   check('screenshot payload', shot.ok === true && shot.value.mediaType === 'image/png' && shot.value.width === 1024
     && typeof shot.value.base64 === 'string' && shot.value.base64.length > 0, JSON.stringify({ ...shot.value, base64: '…' }))
+
+  // --- snapshot / refs / extended page actions ---
+  const snap = await send({ id: 's1', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId })
+  const snapText = String(snap.value.text ?? '')
+  const buttonRefMatch = /\[(e\d+)\] button "Submit answer"/.exec(snapText)
+  check('snapshot returns semantic refs', snap.ok === true && snap.value.generation === 1 && snapText.includes('heading') && snapText.includes('link') && buttonRefMatch !== null, snapText.slice(0, 500))
+  const helpTurn = await send({ id: 's2', action: 'help', sessionId: 'session-1' })
+  check('help returns the workflow', helpTurn.ok === true && String(helpTurn.value.help).includes('snapshot'), JSON.stringify(helpTurn.value).slice(0, 200))
+  const beforeClick = inputEvents.length
+  const refClick = await send({ id: 's3', action: 'click', sessionId: 'session-1', tabId: tab.tabId, ref: buttonRefMatch[1] })
+  check('ref click uses native mouse', refClick.ok === true && inputEvents.length > beforeClick && refClick.value.target.tag === 'button' && refClick.value.observed !== undefined, JSON.stringify(refClick.value).slice(0, 400))
+  const staleRef = await send({ id: 's4', action: 'click', sessionId: 'session-1', tabId: tab.tabId, ref: 'e999' })
+  check('stale ref reports recovery', staleRef.ok === false && staleRef.error.includes('[stale-ref]'), staleRef.error)
+  const noRef = await send({ id: 's4b', action: 'click', sessionId: 'session-1', tabId: tab.tabId, ref: 'nope' })
+  check('bad ref format rejected', noRef.ok === false && noRef.error.includes('[bad-ref]'), noRef.error)
+
+  const secondButton = new FakeElement('button', { attrs: { id: 'other' }, rect: { x: 20, y: 520, width: 120, height: 30 }, text: 'Other action' })
+  body.append(secondButton)
+  const ambiguous = await send({ id: 's5', action: 'click', sessionId: 'session-1', tabId: tab.tabId, selector: 'button' })
+  check('ambiguous selector refuses silently picking', ambiguous.ok === false && ambiguous.error.includes('[ambiguous]') && ambiguous.error.includes('candidates'), ambiguous.error)
+  const indexedClick = await send({ id: 's6', action: 'click', sessionId: 'session-1', tabId: tab.tabId, selector: 'button', index: 1 })
+  check('explicit index resolves ambiguity', indexedClick.ok === true && indexedClick.value.target.tag === 'button', JSON.stringify(indexedClick.value).slice(0, 200))
+
+  const beforeHover = inputEvents.length
+  const hoverTurn = await send({ id: 's7', action: 'hover', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+  const hoverEvents = inputEvents.slice(beforeHover)
+  check('hover moves without pressing', hoverTurn.ok === true && hoverEvents.some((event) => event.type === 'mouseMove') && !hoverEvents.some((event) => event.type === 'mouseDown'), JSON.stringify(hoverEvents))
+  const doubleTurn = await send({ id: 's7b', action: 'dblclick', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+  check('dblclick sends clickCount 2', doubleTurn.ok === true && inputEvents.some((event) => event.type === 'mouseDown' && event.clickCount === 2), JSON.stringify(inputEvents.slice(-6)))
+  const rightTurn = await send({ id: 's7c', action: 'rightClick', sessionId: 'session-1', tabId: tab.tabId, contains: 'More information' })
+  check('rightClick uses the right button', rightTurn.ok === true && inputEvents.some((event) => event.type === 'mouseDown' && event.button === 'right'), JSON.stringify(inputEvents.slice(-6)))
+
+  const comboPress = await send({ id: 's8', action: 'press', sessionId: 'session-1', tabId: tab.tabId, keys: ['Meta+A', 'Backspace'] })
+  const comboEvents = inputEvents.slice(-8)
+  check('key combos carry modifiers', comboPress.ok === true && comboEvents.some((event) => event.type === 'keyDown' && Array.isArray(event.modifiers) && event.modifiers.includes('meta')), JSON.stringify(comboEvents))
+  const keyboardType = await send({ id: 's9', action: 'type', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', text: 'ab', inputMode: 'keyboard', clear: false })
+  check('keyboard typing emits key events', keyboardType.ok === true && keyboardType.value.inputMode === 'keyboard' && inputEvents.some((event) => event.type === 'char' && event.keyCode === 'a'), JSON.stringify(inputEvents.slice(-10)))
+
+  const stateRead = await send({ id: 's10', action: 'read', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', mode: 'state' })
+  check('element state read', stateRead.ok === true && stateRead.value.mode === 'state' && stateRead.value.enabled === true && stateRead.value.box.width === 320, JSON.stringify(stateRead.value).slice(0, 300))
+  const attrsRead = await send({ id: 's11', action: 'read', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', mode: 'attrs' })
+  check('element attrs read', attrsRead.ok === true && attrsRead.value.attrs.id === 'q', JSON.stringify(attrsRead.value).slice(0, 200))
+  const boxRead = await send({ id: 's12', action: 'read', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', mode: 'box' })
+  check('element box read', boxRead.ok === true && boxRead.value.box.width === 320 && boxRead.value.inViewport === true, JSON.stringify(boxRead.value).slice(0, 200))
+  const scopedText = await send({ id: 's13', action: 'read', sessionId: 'session-1', tabId: tab.tabId, selector: 'body', mode: 'text' })
+  check('scoped text read', scopedText.ok === true && String(scopedText.value.text).includes('Welcome'), JSON.stringify(scopedText.value).slice(0, 200))
+
+  const fakeSelect = new FakeElement('select', { attrs: { id: 'sel' }, rect: { x: 10, y: 600, width: 200, height: 30 }, text: '' })
+  fakeSelect.options = [
+    { value: 'a', textContent: 'Alpha' },
+    { value: 'b', textContent: 'Beta' },
+  ]
+  fakeSelect.selectedIndex = 0
+  fakeSelect.value = 'a'
+  body.append(fakeSelect)
+  const selected = await send({ id: 's14', action: 'selectOption', sessionId: 'session-1', tabId: tab.tabId, selector: '#sel', value: 'b' })
+  check('selectOption chooses a value', selected.ok === true && selected.value.value === 'b', JSON.stringify(selected.value).slice(0, 200))
+  const fakeCheckbox = new FakeElement('input', { attrs: { id: 'agree', type: 'checkbox' }, rect: { x: 10, y: 640, width: 20, height: 20 }, text: '' })
+  fakeCheckbox.checked = false
+  fakeCheckbox.click = function click() { this.checked = !this.checked }
+  body.append(fakeCheckbox)
+  const checked = await send({ id: 's15', action: 'check', sessionId: 'session-1', tabId: tab.tabId, selector: '#agree' })
+  check('check toggles a checkbox', checked.ok === true && checked.value.checked === true, JSON.stringify(checked.value).slice(0, 200))
+  const cleared = await send({ id: 's16', action: 'clear', sessionId: 'session-1', tabId: tab.tabId, selector: '#q' })
+  check('clear empties a field', cleared.ok === true && guest.activeElement === input && input.value === '', JSON.stringify(cleared.value).slice(0, 200))
+  const focused = await send({ id: 's17', action: 'focus', sessionId: 'session-1', tabId: tab.tabId, selector: '#q' })
+  check('focus targets a field', focused.ok === true && guest.activeElement === input, JSON.stringify(focused.value).slice(0, 200))
+  const intoView = await send({ id: 's18', action: 'scrollIntoView', sessionId: 'session-1', tabId: tab.tabId, contains: 'More information' })
+  check('scrollIntoView resolves a target', intoView.ok === true && intoView.value.target.tag === 'a', JSON.stringify(intoView.value).slice(0, 200))
+  const dragTurn = await send({ id: 's19', action: 'drag', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer', toSelector: 'a[href]' })
+  check('drag sends a mouse sequence', dragTurn.ok === true && inputEvents.some((event) => event.type === 'mouseDown') && inputEvents.some((event) => event.type === 'mouseUp'), JSON.stringify(dragTurn.value).slice(0, 200))
+
+  const waitVisible = await send({ id: 'w1', action: 'waitForSelector', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', state: 'visible' })
+  check('waitForSelector visible', waitVisible.ok === true && waitVisible.value.matched === true, JSON.stringify(waitVisible.value).slice(0, 200))
+  const waitHidden = await send({ id: 'w2', action: 'waitForSelector', sessionId: 'session-1', tabId: tab.tabId, selector: '#missing', state: 'hidden', timeoutMs: 150 })
+  check('waitForSelector hidden resolves', waitHidden.ok === true && waitHidden.value.matched === true, JSON.stringify(waitHidden.value).slice(0, 200))
+  const waitLoad = await send({ id: 'w3', action: 'waitForLoadState', sessionId: 'session-1', tabId: tab.tabId, loadState: 'load' })
+  check('waitForLoadState matches', waitLoad.ok === true && waitLoad.value.matched === true, JSON.stringify(waitLoad.value).slice(0, 200))
+  const waitUrl = await send({ id: 'w4', action: 'waitForURL', sessionId: 'session-1', tabId: tab.tabId, url: 'example.test', match: 'contains' })
+  check('waitForURL matches', waitUrl.ok === true && waitUrl.value.matched === true, JSON.stringify(waitUrl.value).slice(0, 200))
+  const waitNav = await send({ id: 'w5', action: 'waitForNavigation', sessionId: 'session-1', tabId: tab.tabId, timeoutMs: 150 })
+  check('waitForNavigation times out cleanly', waitNav.ok === true && waitNav.value.matched === false, JSON.stringify(waitNav.value).slice(0, 200))
+
+  const batchTurn = await send({ id: 'b1', action: 'batch', sessionId: 'session-1', tabId: tab.tabId, steps: [{ action: 'click', contains: 'Submit answer' }, { action: 'snapshot', maxElements: 50 }] })
+  check('batch runs steps in one call', batchTurn.ok === true && batchTurn.value.steps.length === 2 && batchTurn.value.allOk === true && typeof batchTurn.value.steps[1].value.text === 'string', JSON.stringify(batchTurn.value).slice(0, 500))
+  const batchFail = await send({ id: 'b2', action: 'batch', sessionId: 'session-1', tabId: tab.tabId, steps: [{ action: 'click', selector: '#nope' }, { action: 'help' }] })
+  check('batch stops on error', batchFail.ok === true && batchFail.value.allOk === false && batchFail.value.steps.length === 1, JSON.stringify(batchFail.value).slice(0, 300))
+
+  const clipShot = await send({ id: 'sc1', action: 'screenshot', sessionId: 'session-1', tabId: tab.tabId, clip: { x: 10, y: 20, width: 300, height: 200 } })
+  check('screenshot clip forwarded', clipShot.ok === true && webview.captureCalls.at(-1).width === 300 && clipShot.value.clip.width === 300, JSON.stringify(webview.captureCalls.at(-1)))
+
+  // --- browser lifecycle actions ---
+  const zoomSet = await send({ id: 'z1', action: 'zoom', sessionId: 'session-1', tabId: tab.tabId, zoomFactor: 1.5 })
+  check('zoom sets and reports factor', zoomSet.ok === true && zoomSet.value.zoom === 1.5, JSON.stringify(zoomSet.value))
+  const viewportTurn = await send({ id: 'v1', action: 'viewport', sessionId: 'session-1', tabId: tab.tabId })
+  check('viewport reports size', viewportTurn.ok === true && viewportTurn.value.viewport.width === 1024, JSON.stringify(viewportTurn.value))
+  const shown = await send({ id: 'sh1', action: 'show', sessionId: 'session-1' })
+  check('show expands the sidebar', shown.ok === true && shown.value.expanded === true, JSON.stringify(shown.value))
+  const hidden = await send({ id: 'sh2', action: 'hide', sessionId: 'session-1' })
+  check('hide collapses the sidebar', hidden.ok === true && hidden.value.expanded === false, JSON.stringify(hidden.value))
+  const finalized = await send({ id: 'f1', action: 'finalize', sessionId: 'session-1', tabId: tab.tabId, mark: 'deliverable' })
+  check('finalize marks a tab', finalized.ok === true && finalized.value.marks[tab.tabId] === 'deliverable', JSON.stringify(finalized.value))
+  const markedList = await send({ id: 'l9', action: 'list', sessionId: 'session-1' })
+  check('list carries mark, viewport and zoom', markedList.ok === true && markedList.value.tabs.some((entry) => entry.mark === 'deliverable' && entry.viewport !== undefined && entry.zoom !== undefined), JSON.stringify(markedList.value.tabs))
+  const reused = await send({ id: 'o9', action: 'open', sessionId: 'session-1', url: 'https://example.test/other', reuse: true })
+  check('open reuses a same-site tab', reused.ok === true && reused.value.reused === true && reused.value.tabId === tab.tabId, JSON.stringify(reused.value))
+  const statusCaps = await send({ id: 'st2', action: 'status', sessionId: 'session-1' })
+  check('status reports capabilities', statusCaps.ok === true && statusCaps.value.capabilities !== undefined && statusCaps.value.capabilities.snapshot === true, JSON.stringify(statusCaps.value).slice(0, 300))
 
   // --- timeout helpers and hung-page resilience ---
   const timeoutError = await moduleExports.__test.withTimeout(new Promise(() => {}), 80, 'Probe')

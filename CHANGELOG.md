@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.3.0
+
+Major observation/action layer upgrade, modelled on mature browser-use workflows
+but kept fully native to the DSH Electron guest:
+
+- Observations: new `snapshot` action returns a compact semantic tree with
+  short element refs; refs drive click/type/hover/... and expire with the next
+  snapshot ([stale-ref]). `read` gained element-scoped `attrs`, `state`, `box`
+  and semantic `interactive` modes.
+- Actions: ref/selector/text/coordinate targets with explicit ambiguity errors
+  ([ambiguous] plus candidates); click, dblclick, rightClick, hover, focus,
+  clear, type (`fill` or real `keyboard` events), press (single combo or a
+  sequence of combos), selectOption, check/uncheck, drag, scroll,
+  scrollIntoView.
+- Post-action observation: every state-changing action returns `observed`
+  (URL/title/scroll changes, DOM mutation counts, new tabs, focus), so a second
+  read is rarely needed.
+- Waits: waitForSelector (visible/attached/hidden/detached), waitForLoadState,
+  waitForURL, waitForNavigation; open/navigate/reload accept `waitUntil`.
+- Screenshot clip regions; `help` returns the usage workflow; `batch` runs up
+  to 25 page actions in one tool call (no nested batch, no screenshot steps).
+- Tabs: list carries title/url/loading/zoom/viewport/mark and mounted/expanded
+  state; open supports same-site `reuse`; show/hide expand or collapse the
+  sidebar; zoom/viewport actions; finalize marks tabs deliverable/handoff.
+- Host tool schemas, gate enforcement (batch steps are gated too), renderers and
+  regression suites updated; device capabilities are reported by `status`.
+
 ## 0.2.11
 
 - Fix the README hero image URL: the `main/...` raw path was cached as a 404
