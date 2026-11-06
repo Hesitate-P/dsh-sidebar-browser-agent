@@ -167,6 +167,8 @@ function queryAll(root, selector) {
   return results
 }
 
+const bridgeMock = { upload: Buffer.from('upload-bridge-bytes'), download: Buffer.from('download-bridge-bytes'), sink: [], done: null }
+
 const guestContext = {
   document: {
     title: 'Test Page',
@@ -253,28 +255,69 @@ const guestContext = {
     }
   },
   atob: (value) => Buffer.from(String(value), 'base64').toString('binary'),
-  fetch: async (url) => {
-    const parsed = String(url)
-    const match = /^data:([^;]+);base64,(.*)$/.exec(parsed)
-    if (match === null) throw new Error('network mock only serves data: URLs')
-    const base64 = match[2]
-    const type = match[1]
-    const size = Buffer.from(base64, 'base64').length
+  fetch: async (url, init = {}) => {
+    const target = String(url)
+    if (target.includes('/sink?')) {
+      if (target.includes('done=1')) {
+        bridgeMock.done = JSON.parse(String(init.body || '{}'))
+        return {
+          ok: true,
+          status: 200,
+          async json() { return { ok: true, path: '/tmp/downloads/from-bridge.txt', name: 'from-bridge.txt', bytes: bridgeMock.download.length } },
+        }
+      }
+      bridgeMock.sink.push(Number(init.body?.size || 0))
+      return { ok: true, status: 200, async json() { return { ok: true } } }
+    }
+    if (target.includes('/source?')) {
+      const bytes = bridgeMock.upload
+      return {
+        ok: true,
+        status: 200,
+        headers: { get(name) { return name.toLowerCase() === 'content-type' ? 'text/plain' : null } },
+        body: {
+          getReader() {
+            let sent = false
+            return {
+              async read() {
+                if (sent) return { done: true, value: undefined }
+                sent = true
+                return { done: false, value: new Uint8Array(bytes) }
+              },
+            }
+          },
+        },
+        async blob() { return { size: bytes.length, type: 'text/plain', byteLength: bytes.length, base64: bytes.toString('base64') } },
+      }
+    }
+    const match = /^data:([^;]+);base64,(.*)$/.exec(target)
+    if (match === null) throw new Error('network mock blocked this URL')
+    const bytes = Buffer.from(match[2], 'base64')
     return {
       ok: true,
       status: 200,
       headers: {
         get(name) {
           const key = String(name).toLowerCase()
-          if (key === 'content-type') return type
-          if (key === 'content-length') return String(size)
+          if (key === 'content-type') return match[1]
+          if (key === 'content-length') return String(bytes.length)
           if (key === 'content-disposition') return 'attachment; filename="hi.txt"'
           return null
         },
       },
-      async blob() {
-        return { size, type, base64 }
+      body: {
+        getReader() {
+          let sent = false
+          return {
+            async read() {
+              if (sent) return { done: true, value: undefined }
+              sent = true
+              return { done: false, value: new Uint8Array(bytes) }
+            },
+          }
+        },
       },
+      async blob() { return { size: bytes.length, type: match[1], byteLength: bytes.length, base64: match[2] } },
     }
   },
   Event: class FakeEvent {
@@ -801,22 +844,29 @@ async function main() {
   const uploadInput = new FakeElement('input', { attrs: { id: 'file-upload', type: 'file' }, rect: { x: 10, y: 760, width: 160, height: 24 }, text: '' })
   uploadInput.files = []
   body.append(uploadInput)
-  const uploadTurn = await send({ id: 'u1', action: 'upload', sessionId: 'session-1', tabId: tab.tabId, selector: '#file-upload', files: [{ name: 'a.txt', mediaType: 'text/plain', base64: 'aGk=' }] })
-  check('upload attaches files to a file input', uploadTurn.ok === true && uploadTurn.value.count === 1 && uploadTurn.value.uploadMode === 'file-input' && uploadInput.files.length === 1 && uploadInput.files[0].name === 'a.txt' && uploadInput.events.includes('change'), JSON.stringify({ value: uploadTurn.value, events: uploadInput.events }))
+  const uploadTurn = await send({ id: 'u1', action: 'upload', sessionId: 'session-1', tabId: tab.tabId, selector: '#file-upload', files: [{ name: 'a.txt', mediaType: 'text/plain', size: bridgeMock.upload.length, url: 'http://127.0.0.1:1/source?token=u' }] })
+  check('upload streams a bridge source into a file input', uploadTurn.ok === true && uploadTurn.value.count === 1 && uploadTurn.value.uploadMode === 'file-input' && uploadInput.files.length === 1 && uploadInput.files[0].name === 'a.txt' && uploadInput.events.includes('change'), JSON.stringify({ value: uploadTurn.value, events: uploadInput.events }))
   const uploadDropTarget = new FakeElement('div', { attrs: { id: 'drop-upload' }, rect: { x: 10, y: 800, width: 160, height: 60 }, text: 'drop' })
   body.append(uploadDropTarget)
-  const dropUpload = await send({ id: 'u2', action: 'upload', sessionId: 'session-1', tabId: tab.tabId, selector: '#drop-upload', files: [{ name: 'b.json', mediaType: 'application/json', base64: 'e30=' }] })
+  const dropUpload = await send({ id: 'u2', action: 'upload', sessionId: 'session-1', tabId: tab.tabId, selector: '#drop-upload', files: [{ name: 'b.json', mediaType: 'application/json', size: 2, url: 'http://127.0.0.1:1/source?token=d' }] })
   check('upload replays a drop on a drop zone', dropUpload.ok === true && dropUpload.value.uploadMode === 'drop' && uploadDropTarget.events.includes('drop'), JSON.stringify({ value: dropUpload.value, events: uploadDropTarget.events }))
 
+  bridgeMock.sink.length = 0
+  bridgeMock.done = null
+  const downloadTurn = await send({ id: 'd1', action: 'download', sessionId: 'session-1', tabId: tab.tabId, url: 'data:text/plain;base64,aGk=', sink: { url: 'http://127.0.0.1:1/sink?token=s' } })
+  check('download streams the page session into the file bridge',
+    downloadTurn.ok === true && downloadTurn.value.method === 'file-bridge' && downloadTurn.value.path === '/tmp/downloads/from-bridge.txt'
+    && downloadTurn.value.bytes === bridgeMock.download.length && bridgeMock.sink.length > 0 && bridgeMock.done !== null && bridgeMock.done.filename === 'hi.txt',
+    JSON.stringify({ value: downloadTurn.value, sink: bridgeMock.sink, done: bridgeMock.done }).slice(0, 400))
   const saveRequests = []
   sandbox.dshDesktop.fileActions = {
     save: async (request) => {
       saveRequests.push(request)
-      return { status: 'saved', path: '/tmp/downloads/' + (request.name || 'file') }
+      return { status: 'saved', path: '/tmp/downloads/fallback.txt' }
     },
   }
-  const downloadTurn = await send({ id: 'd1', action: 'download', sessionId: 'session-1', tabId: tab.tabId, url: 'data:text/plain;base64,aGk=' })
-  check('download fetches in the page session and saves natively', downloadTurn.ok === true && downloadTurn.value.method === 'guest-fetch' && downloadTurn.value.path === '/tmp/downloads/hi.txt' && saveRequests.length === 1 && saveRequests[0].url.startsWith('data:text/plain') && saveRequests[0].name === 'hi.txt', JSON.stringify({ value: downloadTurn.value, requests: saveRequests }).slice(0, 400))
+  const fallbackDownload = await send({ id: 'd2', action: 'download', sessionId: 'session-1', tabId: tab.tabId, url: 'https://blocked.test/file.bin', sink: { url: 'http://127.0.0.1:1/sink?token=f' } })
+  check('download falls back to the native URL save when page fetch is blocked', fallbackDownload.ok === true && fallbackDownload.value.method === 'native-url' && fallbackDownload.value.path === '/tmp/downloads/fallback.txt' && saveRequests.length === 1 && saveRequests[0].url === 'https://blocked.test/file.bin', JSON.stringify({ value: fallbackDownload.value, requests: saveRequests }).slice(0, 400))
 
   const waitVisible = await send({ id: 'w1', action: 'waitForSelector', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', state: 'visible' })
   check('waitForSelector visible', waitVisible.ok === true && waitVisible.value.matched === true, JSON.stringify(waitVisible.value).slice(0, 200))

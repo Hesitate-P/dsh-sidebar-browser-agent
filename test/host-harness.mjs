@@ -10,6 +10,7 @@
  */
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { apply, Config, PLUGIN_VERSION } from '../lib/index.js'
@@ -339,6 +340,16 @@ function fakePage(command) {
         ok: true,
         value: { action: 'eval', ...base, url: 'https://example.com/', title: 'Example Domain', result: '{"answer":42}', truncated: false },
       }
+    case 'download':
+      return {
+        ok: true,
+        value: { action: 'download', ...base, url: command.url, name: 'file.txt', method: 'file-bridge', path: '/tmp/example/file.txt', bytes: 3 },
+      }
+    case 'upload':
+      return {
+        ok: true,
+        value: { action: 'upload', ...base, files: (command.files ?? []).map((file) => file.name), count: (command.files ?? []).length, mode: 'file-input', uploadMode: 'file-input' },
+      }
     default:
       return { ok: false, error: `unexpected action ${command.action}` }
   }
@@ -518,6 +529,34 @@ async function main() {
   const shotContent = harness.tools.get('sidebar_page').definition.output.render({}, shot)
   check('screenshot renders image block', shotContent.length === 2 && shotContent[1].type === 'image' && shotContent[1].attachment.attachmentId === 'attachment-1', JSON.stringify(shotContent))
 
+  // --- loopback file bridge: one-shot upload source and download sink tokens ---
+  const bridgeDir = fs.mkdtempSync(path.join(tmpdir(), 'dsh-host-bridge-'))
+  const samplePath = path.join(bridgeDir, 'sample.txt')
+  fs.writeFileSync(samplePath, 'bridge-bytes')
+  const uploadTurn = pageTurn(harness, fakePage)
+  await sleep(10)
+  const upload = await runTool(harness, 'sidebar_page', { action: 'upload', selector: '#file', paths: [samplePath] })
+  const uploadPoll = await uploadTurn
+  const uploadCommand = uploadPoll.json.commands[0]
+  const sourceUrl = uploadCommand?.files?.[0]?.url
+  const firstSource = typeof sourceUrl === 'string' ? await fetch(sourceUrl) : undefined
+  const sourceBody = firstSource === undefined ? '' : await firstSource.text()
+  const secondSource = typeof sourceUrl === 'string' ? await fetch(sourceUrl) : undefined
+  check('upload command carries a one-shot bridge URL',
+    upload.count === 1 && uploadCommand?.files?.[0]?.name === 'sample.txt'
+    && firstSource?.status === 200 && sourceBody === 'bridge-bytes' && secondSource?.status === 403,
+    JSON.stringify({ upload, files: uploadCommand?.files, first: firstSource?.status, second: secondSource?.status }))
+  fs.rmSync(bridgeDir, { recursive: true, force: true })
+
+  const downloadTurn = pageTurn(harness, fakePage)
+  await sleep(10)
+  const download = await runTool(harness, 'sidebar_page', { action: 'download', url: 'https://example.com/file.txt' })
+  const downloadPoll = await downloadTurn
+  const sinkUrl = downloadPoll.json.commands[0]?.sink?.url
+  check('download command carries a one-shot sink URL',
+    typeof sinkUrl === 'string' && sinkUrl.includes('token=') && download.method === 'file-bridge' && download.path === '/tmp/example/file.txt',
+    JSON.stringify({ download, sinkUrl }))
+
   // --- argument validation before the bridge ---
   const missingText = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'type' }))
   check('type requires text', typeof missingText === 'string' && missingText.startsWith('type requires "text"'), missingText)
@@ -553,6 +592,8 @@ async function main() {
   check('allowUploads=false blocks upload', typeof gatedUpload === 'string' && gatedUpload.includes('allowUploads'), gatedUpload)
   const batchUpload = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'batch', batch: [{ action: 'upload', selector: '#file', paths: ['/tmp/x'] }] }))
   check('batch refuses uploads', typeof batchUpload === 'string' && batchUpload.includes('cannot upload files'), batchUpload)
+  const batchDownload = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'batch', batch: [{ action: 'download', url: 'https://example.com/f.txt' }] }))
+  check('batch refuses downloads', typeof batchDownload === 'string' && batchDownload.includes('cannot download files'), batchDownload)
   const badUrl = await expectThrow(() => runTool(harness, 'sidebar_browser', { action: 'open', url: 'file:///etc/passwd' }))
   check('non-http url rejected', typeof badUrl === 'string' && badUrl.includes('only opens http://'), badUrl)
 

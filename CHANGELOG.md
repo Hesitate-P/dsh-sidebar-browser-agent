@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.4.0
+
+Unified one-shot-token loopback file bridge replaces the previous download/upload
+mechanism (12 MB data-URL round trip and base64 command payloads):
+
+- The Host now starts a small HTTP listener on an ephemeral `127.0.0.1` port
+  (the DSH guest session blocks requests to the application port itself) and
+  issues one-shot, 5-minute file tokens.
+- Downloads: the page-session response (cookies included, `blob:`/`data:` too)
+  is streamed in ~4 MB chunks to the loopback sink; the Host moves the staged
+  file into `~/Downloads` or an explicit absolute `path` (numeric suffix instead
+  of overwriting). Size is bounded by page memory/disk, not by a bridge message.
+  `saveAs` is replaced by `path`; CORS-blocked public URLs still fall back to the
+  native URL save.
+- Uploads: the Host serves local files through one-shot loopback source URLs;
+  the guest fetches each file, builds a real `File`, and attaches it to an
+  `<input type=file>` or drop zone. Removed the base64 round trip; per-file cap
+  raised to 256 MB, per-action total to 512 MB.
+- One-shot tokens are consumed on use, expire after 5 minutes, and staged temp
+  files are cleaned up on completion, expiry, and plugin disposal.
+- Host/client suites updated (one-shot source test, sink streaming, fallback,
+  token URL validation) and docs/gates/schemas follow the new bridge.
+- Real-guest verification: 20 MB download and 20 MB upload with matching
+  SHA-256; 30 MB download to an explicit path with matching SHA-256; cookie-gated
+  and page-generated blob downloads; CORS-blocked URL native fallback; 300 MB
+  upload refused by the per-file guard.
+
 ## 0.3.5
 
 Native file transfer without Playwright/Puppeteer and without OS file dialogs:
