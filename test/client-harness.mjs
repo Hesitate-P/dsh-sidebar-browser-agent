@@ -730,6 +730,14 @@ async function main() {
   check('scrollIntoView resolves a target', intoView.ok === true && intoView.value.target.tag === 'a', JSON.stringify(intoView.value).slice(0, 200))
   const dragTurn = await send({ id: 's19', action: 'drag', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer', toSelector: 'a[href]' })
   check('drag sends a mouse sequence', dragTurn.ok === true && inputEvents.some((event) => event.type === 'mouseDown') && inputEvents.some((event) => event.type === 'mouseUp'), JSON.stringify(dragTurn.value).slice(0, 200))
+  const dndSource = new FakeElement('div', { attrs: { id: 'dnd-src', draggable: 'true' }, rect: { x: 10, y: 700, width: 100, height: 40 }, text: 'dnd source' })
+  const dndTarget = new FakeElement('div', { attrs: { id: 'dnd-target' }, rect: { x: 140, y: 700, width: 120, height: 60 }, text: 'dnd target' })
+  body.append(dndSource)
+  body.append(dndTarget)
+  const dndTurn = await send({ id: 's20', action: 'drag', sessionId: 'session-1', tabId: tab.tabId, selector: '#dnd-src', toSelector: '#dnd-target' })
+  check('drag replays a synthetic HTML5 drop sequence',
+    dndTurn.ok === true && dndSource.events.includes('dragstart') && dndTarget.events.includes('dragover') && dndTarget.events.includes('drop') && dndTurn.value.syntheticDrag === true,
+    JSON.stringify({ source: dndSource.events, target: dndTarget.events, value: dndTurn.value }).slice(0, 400))
 
   const waitVisible = await send({ id: 'w1', action: 'waitForSelector', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', state: 'visible' })
   check('waitForSelector visible', waitVisible.ok === true && waitVisible.value.matched === true, JSON.stringify(waitVisible.value).slice(0, 200))
@@ -754,7 +762,7 @@ async function main() {
   const zoomSet = await send({ id: 'z1', action: 'zoom', sessionId: 'session-1', tabId: tab.tabId, zoomFactor: 1.5 })
   check('zoom sets and reports factor', zoomSet.ok === true && zoomSet.value.zoom === 1.5, JSON.stringify(zoomSet.value))
   const viewportTurn = await send({ id: 'v1', action: 'viewport', sessionId: 'session-1', tabId: tab.tabId })
-  check('viewport reports size', viewportTurn.ok === true && viewportTurn.value.viewport.width === 1024, JSON.stringify(viewportTurn.value))
+  check('viewport reports CSS viewport and frame', viewportTurn.ok === true && viewportTurn.value.viewport.width === 1280 && viewportTurn.value.frame.width === 1024, JSON.stringify(viewportTurn.value))
   const shown = await send({ id: 'sh1', action: 'show', sessionId: 'session-1' })
   check('show expands the sidebar', shown.ok === true && shown.value.expanded === true, JSON.stringify(shown.value))
   const hidden = await send({ id: 'sh2', action: 'hide', sessionId: 'session-1' })
@@ -762,7 +770,7 @@ async function main() {
   const finalized = await send({ id: 'f1', action: 'finalize', sessionId: 'session-1', tabId: tab.tabId, mark: 'deliverable' })
   check('finalize marks a tab', finalized.ok === true && finalized.value.marks[tab.tabId] === 'deliverable', JSON.stringify(finalized.value))
   const markedList = await send({ id: 'l9', action: 'list', sessionId: 'session-1' })
-  check('list carries mark, viewport and zoom', markedList.ok === true && markedList.value.tabs.some((entry) => entry.mark === 'deliverable' && entry.viewport !== undefined && entry.zoom !== undefined), JSON.stringify(markedList.value.tabs))
+  check('list carries mark, frame and zoom', markedList.ok === true && markedList.value.tabs.some((entry) => entry.mark === 'deliverable' && entry.frame !== undefined && entry.zoom !== undefined), JSON.stringify(markedList.value.tabs))
   const reused = await send({ id: 'o9', action: 'open', sessionId: 'session-1', url: 'https://example.test/other', reuse: true })
   check('open reuses a same-site tab', reused.ok === true && reused.value.reused === true && reused.value.tabId === tab.tabId, JSON.stringify(reused.value))
   const statusCaps = await send({ id: 'st2', action: 'status', sessionId: 'session-1' })

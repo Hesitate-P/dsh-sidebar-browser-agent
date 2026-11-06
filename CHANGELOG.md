@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0
+## 0.3.2
 
 Major observation/action layer upgrade, modelled on mature browser-use workflows
 but kept fully native to the DSH Electron guest:
@@ -26,6 +26,10 @@ but kept fully native to the DSH Electron guest:
   sidebar; zoom/viewport actions; finalize marks tabs deliverable/handoff.
 - Host tool schemas, gate enforcement (batch steps are gated too), renderers and
   regression suites updated; device capabilities are reported by `status`.
+- Local live-test fixes: `Mod+A` select-all fallback for synthetic key events,
+  zoom-aware native input coordinates, `settleTab` waits for the real document
+  instead of about:blank, guest CSS viewport vs guest frame box, batch steps
+  now carry their action, snapshot trims checkbox/select noise.
 
 ## 0.2.11
 
