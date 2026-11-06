@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.4
+
+- Page actions no longer refuse while the guest still reports loading assets:
+  readiness now follows the document's `readyState` (bounded to 5 s), so slow
+  pages such as GitHub's login and 2FA screens stay controllable.
+
 ## 0.2.3
 
 - Package entries moved to `lib/index.js` and `lib/client.js` (DSH package
