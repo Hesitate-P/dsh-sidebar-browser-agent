@@ -1,30 +1,31 @@
 name: publish
 
-# Publishes the package to npm when a v* tag is pushed and an NPM_TOKEN
-# repository secret exists. Publishing is what enables one-click Update in the
-# DSH Plugin Manager (its Update flow only lists registry-installed bundles).
+# Publishes the package to npm when a v* tag is pushed.
+#
+# Authentication uses npm Trusted Publishing (GitHub OIDC): the npm package
+# settings name this repository and this workflow file as its trusted
+# publisher, and the short-lived id-token below is exchanged for publish rights.
+# No long-lived NPM_TOKEN secret is needed, so nothing can leak or expire.
 on:
   push:
     tags: ['v*']
 
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   publish:
     runs-on: ubuntu-latest
-    env:
-      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
+      - name: Use the latest npm CLI (trusted publishing needs >= 11.5.2)
+        run: npm install -g npm@latest
       - name: Test before publishing
         run: node test/run.mjs
-      - name: Publish
-        if: ${{ env.NPM_TOKEN != '' }}
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
-      - name: Report skipped publish
-        if: ${{ env.NPM_TOKEN == '' }}
-        run: echo "NPM_TOKEN secret is not configured; skipped npm publish."
+      - name: Publish with trusted publishing (OIDC)
+        run: npm publish --provenance --access public

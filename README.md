@@ -123,10 +123,15 @@ github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.2
 也可以直接填 GitHub 仓库 URL。安装完成后 profile 依赖会记录为 `github:...#v0.2.0`，bundle 自动选中并启用。
 `engines.dsh` 声明兼容 `>=0.2.2-rc.1 <0.3.0`，Git 规格在安装后由 DSH 校验版本要求。
 
-### 从 npm 安装（发布后，可一键更新）
+### 从 npm 安装（推荐，可一键更新）
 
-包名 `dsh-sidebar-browser-agent`。发布后在 Plugin Manager 中以 `dsh-sidebar-browser-agent@<version>` 安装，
-此后详情页会出现 **Update**（DSH 的版本列表与 Update 只对 registry 安装的第三方包生效）。
+包名 `dsh-sidebar-browser-agent`（已发布，最新 `0.2.5`）。在 Plugin Manager 中以
+`dsh-sidebar-browser-agent@<version>` 安装（或直接点 Update 升级），此后详情页会持续提供 **Update**
+（DSH 的版本列表与 Update 只对 registry 安装的第三方包生效）：
+
+```text
+plugin_manager install_bundle(target: "dsh-sidebar-browser-agent@0.2.5")
+```
 
 ### 开发安装（link）
 
@@ -153,18 +158,24 @@ GitHub 安装（`github:...` 规格）不会出现 Update。对应更新方式�
 Plugin Manager 重装新版本后解析到新的模块 URL，Host 半会加载新代码而**无需重启** Harness；
 若仍看到「page half / Host half 版本不一致」告警，重启一次 Harness 即可。
 
-如果希望 GitHub 安装也具备一键更新：把包发布到 npm（仓库自带 `.github/workflows/publish.yml`，
-在 GitHub 配置 `NPM_TOKEN` secret 后推送 `v*` 标签即自动测试并发布），然后把 profile 的安装来源切换到
-registry spec（`dsh-sidebar-browser-agent@<version>`）一次即可。
+如果希望 GitHub 安装也具备一键更新：把 profile 的安装来源切换到 registry spec
+（`dsh-sidebar-browser-agent@<version>`）一次即可；本仓库自 `0.2.5` 起已发布到 npm。
 
 ## 发布流程
 
+发布认证使用 **npm Trusted Publishing（GitHub OIDC）**，不使用长期 token：npm 包设置里把发布者绑定到
+本仓库的 `publish.yml`，workflow 以 `id-token: write` 换取短期发布权限（`npm publish --provenance`）。
+这样没有需要轮换的 `NPM_TOKEN`，也不受 bypass-2FA token 弃用政策影响。
+
+首次发布前在 npm 包设置（Settings → Trusted Publisher）绑定：owner `Hesitate-P`、repository
+`dsh-sidebar-browser-agent`、workflow `publish.yml`。
+
 ```bash
-node scripts/set-version.mjs 0.2.1   # 同步 package.json 与 index.js/client.js 的 PLUGIN_VERSION
-npm test                             # 回归测试同时校验三处版本一致性
+node scripts/set-version.mjs 0.2.1   # 同步 package.json、index.js/client.js 的 PLUGIN_VERSION，并生成新的 lib/entry-<version>.js
+npm test                             # 回归测试同时校验版本一致性、版本化 Host 入口
 git commit -am "release v0.2.1"
 git tag v0.2.1
-git push --follow-tags               # CI 跑测试；配置了 NPM_TOKEN 时 publish workflow 发布 npm
+git push --follow-tags               # CI 跑测试；publish workflow 通过 OIDC 自动发布 npm
 ```
 
 ### 本地打包

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.6
+
+- Publishing is now token-free: the publish workflow authenticates to npm with
+  **Trusted Publishing (GitHub OIDC)**, publishes with provenance, and no
+  longer needs the `NPM_TOKEN` secret (long-lived/bypass-2FA tokens are being
+  deprecated by npm).
+
 ## 0.2.5
 
 - Resilience: every awaited guest operation (page script, screenshot, native
