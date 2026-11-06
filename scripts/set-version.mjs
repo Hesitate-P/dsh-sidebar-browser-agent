@@ -31,7 +31,21 @@ for (const file of ['lib/index.js', 'lib/client.js']) {
   fs.writeFileSync(target, source.replace(/PLUGIN_VERSION = '[^']*'/, `PLUGIN_VERSION = '${next}'`), 'utf8')
 }
 
+// Versioned Host entry: the Loader resolves package.json's `exports["."]`, and
+// Node caches an ES module by URL. Reinstalling the same package directory
+// would therefore keep executing the previously imported Host module after an
+// update. Giving every release its own entry file makes the resolved URL new,
+// so an updated install loads the new Host code without restarting the Host.
+const entryName = `entry-${next}.js`
+for (const file of fs.readdirSync(path.join(root, 'lib'))) {
+  if (/^entry-.*\.js$/.test(file) && file !== entryName) fs.rmSync(path.join(root, 'lib', file))
+}
+fs.writeFileSync(path.join(root, 'lib', entryName), fs.readFileSync(path.join(root, 'lib', 'index.js'), 'utf8'), 'utf8')
+manifest.exports = { ...manifest.exports, '.': `./lib/${entryName}` }
+fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8')
+
 console.log(`version ${previous} -> ${next}`)
+console.log(`host entry: ./lib/${entryName}`)
 console.log('next steps:')
 console.log('  node test/run.mjs')
 console.log('  git commit -am "release v' + next + '"')

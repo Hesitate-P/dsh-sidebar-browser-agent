@@ -16,8 +16,9 @@
 | 文件 | 作用 |
 | --- | --- |
 | `cordis.patch.yml` | bundle patch，插入 Host 插件行（id `sidebar-browser-agent`） |
-| `lib/index.js` | Host 半：配置与开关、`sidebar_browser` / `sidebar_page` 工具、HTTP 长轮询桥、截图转 attachment、启动自检 |
-| `lib/client.js` | 浏览器半：长轮询取命令，用公开 `ctx.sidebarRight` 管理标签、用原生 webview 操作页面；`status` 输出自检信息 |
+| `lib/index.js` | Host 半源码：配置与开关、`sidebar_browser` / `sidebar_page` 工具、HTTP 长轮询桥、截图转 attachment、启动自检 |
+| `lib/entry-<version>.js` | 实际提供给 Loader 的 Host 入口（由 `scripts/set-version.mjs` 生成）：每次发版换新文件路径，重装后能加载新 Host 代码而非 Node 缓存的旧模块 |
+| `lib/client.js` | 浏览器半：长轮询取命令，用公开 `ctx.sidebarRight` 管理标签、用原生 webview 操作页面；所有 guest 调用有超时看门狗，页面卡死不会阻塞桥；`status` 输出自检信息 |
 | `locale/*.json` | 插件列表显示用的标题与描述（中/英） |
 | `icon.svg` | 插件图标 |
 | `vendor/` | 内置的 MIT 依赖（schemastery + cosmokit），使 link 安装的插件也能声明原生 Config schema，见 `vendor/NOTICE.md` |
@@ -148,8 +149,9 @@ GitHub 安装（`github:...` 规格）不会出现 Update。对应更新方式�
 | GitHub 安装 | Plugin Manager 中先 **Remove**，再安装新标签：`github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.2`。工具等价操作：`plugin_manager remove_bundle` → `install_bundle`。移除期间插件短暂不可用，重新安装后恢复。 |
 | npm 安装 | 详情页 **Update**：列出更高版本、校验 `engines.dsh`/peer 后一键替换；失败会回滚并重装旧版本。 |
 
-更新后建议先跑一次 `sidebar_browser status`：页面半与 Host 半版本不一致时它会给出重启提示（DSH 重启后才会
-加载新安装的 Host 代码；自 0.2.3 起入口位于 `lib/`，同路径替换会解析到新的模块代）。
+更新后先跑一次 `sidebar_browser status` 确认版本：自 0.2.5 起 Host 入口使用版本化文件路径，
+Plugin Manager 重装新版本后解析到新的模块 URL，Host 半会加载新代码而**无需重启** Harness；
+若仍看到「page half / Host half 版本不一致」告警，重启一次 Harness 即可。
 
 如果希望 GitHub 安装也具备一键更新：把包发布到 npm（仓库自带 `.github/workflows/publish.yml`，
 在 GitHub 配置 `NPM_TOKEN` secret 后推送 `v*` 标签即自动测试并发布），然后把 profile 的安装来源切换到
@@ -204,6 +206,7 @@ node test/run.mjs        # 或 npm test
   页面操作会明确报错，标签页管理仍可用，读取纯文本可改用 `web_fetch`。
 - 调用时 Harness 页面必须打开；`open`/`focus`/`close`/`screenshot` 需要调用会话正显示在页面上。
 - 截图是当前视口（非整页长图），且只在会话可见时可靠；超宽图会自动降采样，最大约 12MB base64。
+- 页面卡死/无响应时，guest 调用会在 25s 内返回超时错误（导航 20s），桥保持可用；极端情况下仍建议重载该标签页。
 - `eval` 可在页面执行任意 JS（可用配置关闭），等同把该页面当作可编程环境；请只在可信页面使用。
 - 侧栏浏览器对页面有沙箱限制：无下载、无弹窗（会转为新侧栏标签）、无权限授予，页面也访问不到 DSH 应用。
 

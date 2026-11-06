@@ -623,6 +623,40 @@ async function main() {
   check('screenshot payload', shot.ok === true && shot.value.mediaType === 'image/png' && shot.value.width === 1024
     && typeof shot.value.base64 === 'string' && shot.value.base64.length > 0, JSON.stringify({ ...shot.value, base64: '…' }))
 
+  // --- timeout helpers and hung-page resilience ---
+  const timeoutError = await moduleExports.__test.withTimeout(new Promise(() => {}), 80, 'Probe')
+    .then(() => null, (error) => error.message)
+  check('withTimeout rejects hung operations', typeof timeoutError === 'string' && timeoutError.includes('did not finish within'), timeoutError)
+
+  const originalExecute = webview.executeJavaScript
+  const originalGuestTimeout = moduleExports.__test.TIMEOUTS.guest
+  const originalLoadURL = webview.loadURL
+  const originalNavigationTimeout = moduleExports.__test.TIMEOUTS.navigation
+  try {
+    moduleExports.__test.TIMEOUTS.guest = 150
+    webview.executeJavaScript = () => new Promise(() => {})
+    const hungRead = await send({ id: 'h1', action: 'read', sessionId: 'session-1', tabId: tab.tabId })
+    check('hung page becomes a command error', hungRead.ok === false && String(hungRead.error).includes('did not finish within'), hungRead.error)
+    webview.executeJavaScript = originalExecute
+    moduleExports.__test.TIMEOUTS.guest = originalGuestTimeout
+    const recoveredList = await send({ id: 'h2', action: 'list', sessionId: 'session-1' })
+    check('bridge keeps polling after a hung command', recoveredList.ok === true && Array.isArray(recoveredList.value.tabs), JSON.stringify(recoveredList).slice(0, 160))
+
+    moduleExports.__test.TIMEOUTS.navigation = 150
+    webview.loadURL = () => new Promise(() => {})
+    const hungNavigation = await send({ id: 'h3', action: 'navigate', sessionId: 'session-1', tabId: tab.tabId, url: 'https://example.test/hang' })
+    check('hung navigation becomes a command error', hungNavigation.ok === false && String(hungNavigation.error).includes('did not finish within'), hungNavigation.error)
+    webview.loadURL = originalLoadURL
+    moduleExports.__test.TIMEOUTS.navigation = originalNavigationTimeout
+    const recoveredAfterNavigation = await send({ id: 'h4', action: 'list', sessionId: 'session-1' })
+    check('bridge keeps polling after a hung navigation', recoveredAfterNavigation.ok === true, JSON.stringify(recoveredAfterNavigation).slice(0, 160))
+  } finally {
+    webview.executeJavaScript = originalExecute
+    webview.loadURL = originalLoadURL
+    moduleExports.__test.TIMEOUTS.guest = originalGuestTimeout
+    moduleExports.__test.TIMEOUTS.navigation = originalNavigationTimeout
+  }
+
   // --- off-screen support ---
   sidebar.setMounted('session-2')
   const backgroundRead = await send({ id: 'b1', action: 'read', sessionId: 'session-1', tabId: tab.tabId })

@@ -367,9 +367,16 @@ async function main() {
   const badHosts = Config['~standard'].validate({ allowedHosts: 'example.com' })
   check('config rejects a non-array host list', Array.isArray(badHosts.issues) && badHosts.issues.length > 0, JSON.stringify(badHosts))
 
-  // --- version consistency ---
+  // --- version consistency and the versioned Host entry ---
   check('package version matches host constant', packageJson.version === PLUGIN_VERSION, `${packageJson.version} vs ${PLUGIN_VERSION}`)
   check('client version matches package', clientSource.includes(`PLUGIN_VERSION = '${packageJson.version}'`), packageJson.version)
+  const expectedEntry = `./lib/entry-${packageJson.version}.js`
+  check('package entry is versioned', packageJson.exports?.['.'] === expectedEntry, packageJson.exports?.['.'])
+  const entryFile = path.join(here, '..', 'lib', `entry-${packageJson.version}.js`)
+  const hostSource = fs.readFileSync(path.join(here, '..', 'lib', 'index.js'), 'utf8')
+  check('versioned entry exists', fs.existsSync(entryFile), entryFile)
+  check('versioned entry matches the host source', fs.existsSync(entryFile) && fs.readFileSync(entryFile, 'utf8') === hostSource)
+  check('versioned entry reports the current version', fs.existsSync(entryFile) && fs.readFileSync(entryFile, 'utf8').includes(`PLUGIN_VERSION = '${packageJson.version}'`))
 
   // --- default mount ---
   const harness = start()

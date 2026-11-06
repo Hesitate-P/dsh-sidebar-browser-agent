@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.5
+
+- Resilience: every awaited guest operation (page script, screenshot, native
+  navigation) is now bounded by a deadline. A hung or unresponsive page becomes
+  a normal command error and the bridge keeps polling, instead of blocking the
+  page half until the plugin is reloaded.
+- Update without restart: the Host entry is now a versioned file
+  (`lib/entry-<version>.js` published through `package.json`'s `"."` export).
+  A reinstalled newer version resolves a new module URL, so the running Host
+  loads the new Host code after a Plugin Manager update instead of executing
+  the previously cached module.
+
 ## 0.2.4
 
 - Page actions no longer refuse while the guest still reports loading assets:
