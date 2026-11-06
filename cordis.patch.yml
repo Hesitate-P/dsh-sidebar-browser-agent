@@ -1,0 +1,8 @@
+# Bundle patch for dsh-sidebar-browser-agent.
+#
+# One Host row: it registers the `sidebar_browser` model tool and the HTTP
+# bridge the Web page half uses. The browser half is declared through the
+# package's `dsh.client` section, so no separate row is needed for it.
+- insert:
+    - id: sidebar-browser-agent
+      name: 'dsh-sidebar-browser-agent'

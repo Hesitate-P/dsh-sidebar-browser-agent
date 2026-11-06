@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Sidebar browser agent",
+    "description": "Lets the agent manage native right-sidebar browser tabs and read, click, type, scroll, run JavaScript in and screenshot the loaded page."
+  }
+}

@@ -1,0 +1,30 @@
+name: publish
+
+# Publishes the package to npm when a v* tag is pushed and an NPM_TOKEN
+# repository secret exists. Publishing is what enables one-click Update in the
+# DSH Plugin Manager (its Update flow only lists registry-installed bundles).
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Test before publishing
+        run: node test/run.mjs
+      - name: Publish
+        if: ${{ env.NPM_TOKEN != '' }}
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
+      - name: Report skipped publish
+        if: ${{ env.NPM_TOKEN == '' }}
+        run: echo "NPM_TOKEN secret is not configured; skipped npm publish."

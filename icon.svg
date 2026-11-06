@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sidebar browser agent">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#1f6feb"/>
+  <circle cx="31" cy="29" r="15" fill="none" stroke="#ffffff" stroke-width="2.4"/>
+  <ellipse cx="31" cy="29" rx="6.5" ry="15" fill="none" stroke="#ffffff" stroke-width="2.4"/>
+  <path d="M16 29h30" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="47" cy="47" r="9.5" fill="#0b2a4a" stroke="#7ee787" stroke-width="2"/>
+  <path d="M42.5 47h9M47 42.5v9" stroke="#7ee787" stroke-width="2" stroke-linecap="round"/>
+</svg>
