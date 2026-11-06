@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.3
+
+- Fix the `viewport` result so a single-tab lookup returns the guest frame box
+  (and scroll/url/title) at the top level; the 0.3.2 publish was blocked by the
+  new client-harness assertion catching this missing field.
+
 ## 0.3.2
 
 Major observation/action layer upgrade, modelled on mature browser-use workflows
