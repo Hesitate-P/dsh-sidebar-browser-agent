@@ -730,6 +730,10 @@ async function main() {
   check('scrollIntoView resolves a target', intoView.ok === true && intoView.value.target.tag === 'a', JSON.stringify(intoView.value).slice(0, 200))
   const dragTurn = await send({ id: 's19', action: 'drag', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer', toSelector: 'a[href]' })
   check('drag sends a mouse sequence', dragTurn.ok === true && inputEvents.some((event) => event.type === 'mouseDown') && inputEvents.some((event) => event.type === 'mouseUp'), JSON.stringify(dragTurn.value).slice(0, 200))
+  const beforeRightDrag = inputEvents.length
+  const rightDrag = await send({ id: 's19b', action: 'drag', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', toSelector: '#other', button: 'right' })
+  const rightDragEvents = inputEvents.slice(beforeRightDrag)
+  check('drag accepts a right mouse button', rightDrag.ok === true && rightDrag.value.button === 'right' && rightDragEvents.some((event) => event.type === 'mouseDown' && event.button === 'right'), JSON.stringify({ value: rightDrag.value, events: rightDragEvents.slice(0, 4) }))
   const dndSource = new FakeElement('div', { attrs: { id: 'dnd-src', draggable: 'true' }, rect: { x: 10, y: 700, width: 100, height: 40 }, text: 'dnd source' })
   const dndTarget = new FakeElement('div', { attrs: { id: 'dnd-target' }, rect: { x: 140, y: 700, width: 120, height: 60 }, text: 'dnd target' })
   body.append(dndSource)

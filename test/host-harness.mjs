@@ -524,6 +524,8 @@ async function main() {
   check('invalid ref rejected', typeof invalidRef === 'string' && invalidRef.includes('"ref" must look like'), invalidRef)
   const fullPage = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'screenshot', fullPage: true }))
   check('fullPage screenshot refused', typeof fullPage === 'string' && fullPage.includes('fullPage'), fullPage)
+  const badDragButton = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'drag', ref: 'e1', toRef: 'e2', button: 'scroll' }))
+  check('drag button validated', typeof badDragButton === 'string' && badDragButton.includes('"button" must be'), badDragButton)
   const badZoom = await expectThrow(() => runTool(harness, 'sidebar_browser', { action: 'zoom', tabId: 'tab-1', zoomFactor: 9 }))
   check('zoom factor bounded', typeof badZoom === 'string' && badZoom.includes('zoomFactor'), badZoom)
   const missingMark = await expectThrow(() => runTool(harness, 'sidebar_browser', { action: 'finalize', tabId: 'tab-1' }))

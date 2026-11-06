@@ -7,7 +7,7 @@
 ## 做什么
 
 - **观察**：`snapshot` 返回紧凑语义树（role/名称/状态 + `e12` 这类 ref），`read` 支持文本、交互元素、HTML，以及按 ref/selector 读取单个元素的文本、属性、状态、包围盒。
-- **操作**：ref / CSS selector / 可见文本 / 坐标定位；支持 click、dblclick、rightClick、hover、focus、clear、type（填值与真实键盘两种）、press（组合键如 `Meta+A`）、selectOption、check/uncheck、drag、scroll、scrollIntoView。
+- **操作**：ref / CSS selector / 可见文本 / 坐标定位；支持 click、dblclick、rightClick、hover、focus、clear、type（填值与真实键盘两种）、press（组合键如 `Meta+A`）、selectOption、check/uncheck、drag（左/中/右键）、scroll、scrollIntoView。
 - **动作后观察**：每个改状态的动作返回 `observed`（URL/标题/滚动变化、DOM 变更计数、新标签、焦点），不用再读一遍整页。
 - **训练有素的等待**：`waitForSelector`（visible/attached/hidden/detached）、`waitForLoadState`、`waitForURL`、`waitForNavigation`；`open/navigate/reload` 可带 `waitUntil`。
 - **批量**：`batch` 在一条命令里顺序执行多步页面动作；**截图**支持 viewport 或 `clip` 区域，并以图片附件返回。

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.4
+
+- `drag` accepts a mouse `button` (left, right or middle), matching drag-test
+  pages that exercise every button. Verified against cps-check.com/cn/drag-test
+  (Konva canvas): left, middle and right drags move the object by exactly the
+  requested delta at zoom 1 and 1.25, and the object stays put after release.
+
 ## 0.3.3
 
 - Fix the `viewport` result so a single-tab lookup returns the guest frame box
