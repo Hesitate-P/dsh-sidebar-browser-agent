@@ -1,7 +1,8 @@
 {
   "name": "dsh-sidebar-browser-agent",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
+  "icon": "./icon.svg",
   "description": "Native agent control for the DSH right-sidebar browser: manage tabs, and read, click, type, scroll, run JavaScript in and screenshot the real page through its Electron guest.",
   "license": "MIT",
   "repository": {
@@ -19,7 +20,7 @@
     "electron-webview"
   ],
   "exports": {
-    ".": "./lib/entry-0.2.6.js",
+    ".": "./lib/entry-0.2.7.js",
     "./client": "./lib/client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"

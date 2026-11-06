@@ -370,6 +370,14 @@ async function main() {
   // --- version consistency and the versioned Host entry ---
   check('package version matches host constant', packageJson.version === PLUGIN_VERSION, `${packageJson.version} vs ${PLUGIN_VERSION}`)
   check('client version matches package', clientSource.includes(`PLUGIN_VERSION = '${packageJson.version}'`), packageJson.version)
+  const iconReference = packageJson.icon
+  check('package declares a relative icon', typeof iconReference === 'string' && iconReference.startsWith('./') && !iconReference.includes('..'), iconReference)
+  const iconFile = typeof iconReference === 'string' ? path.resolve(here, '..', iconReference) : ''
+  check('declared icon exists', iconFile !== '' && fs.existsSync(iconFile), iconFile)
+  const iconSource = iconFile !== '' && fs.existsSync(iconFile) ? fs.readFileSync(iconFile, 'utf8') : ''
+  check('declared icon is a 36x36 svg', iconSource.startsWith('<svg') && iconSource.includes('viewBox="0 0 36 36"'), iconSource.slice(0, 60))
+  check('declared icon ships with the package', Array.isArray(packageJson.files) && packageJson.files.includes('icon.svg'), JSON.stringify(packageJson.files))
+
   const expectedEntry = `./lib/entry-${packageJson.version}.js`
   check('package entry is versioned', packageJson.exports?.['.'] === expectedEntry, packageJson.exports?.['.'])
   const entryFile = path.join(here, '..', 'lib', `entry-${packageJson.version}.js`)

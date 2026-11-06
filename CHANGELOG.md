@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.7
+
+- Redrew the plugin icon in the official plugin style: a transparent 36x36
+  gradient glyph (browser window, sidebar list, agent cursor) using the same
+  palette and stroke language as the built-in plugin icons.
+- Declared `icon` in `package.json`, the field the Plugin Manager reads for a
+  plugin row, and added a GitHub-hosted 180px raster for storefront tiles.
+
 ## 0.2.6
 
 - Publishing is now token-free: the publish workflow authenticates to npm with

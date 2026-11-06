@@ -1,8 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Sidebar browser agent">
-  <rect x="2" y="2" width="60" height="60" rx="14" fill="#1f6feb"/>
-  <circle cx="31" cy="29" r="15" fill="none" stroke="#ffffff" stroke-width="2.4"/>
-  <ellipse cx="31" cy="29" rx="6.5" ry="15" fill="none" stroke="#ffffff" stroke-width="2.4"/>
-  <path d="M16 29h30" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
-  <circle cx="47" cy="47" r="9.5" fill="#0b2a4a" stroke="#7ee787" stroke-width="2"/>
-  <path d="M42.5 47h9M47 42.5v9" stroke="#7ee787" stroke-width="2" stroke-linecap="round"/>
+<svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sidebar-browser-page" x1="8" y1="9" x2="29" y2="27" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67C7FE" />
+      <stop offset="1" stop-color="#3F77D8" />
+    </linearGradient>
+    <linearGradient id="sidebar-browser-side" x1="10" y1="11" x2="15" y2="25" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6AECB6" />
+      <stop offset="1" stop-color="#37A6B1" />
+    </linearGradient>
+  </defs>
+  <rect x="7.7" y="8.7" width="20.6" height="18.6" rx="3.4" stroke="url(#sidebar-browser-page)" stroke-width="2.4" />
+  <rect x="10.4" y="12.2" width="3.6" height="1.8" rx="0.9" fill="url(#sidebar-browser-side)" />
+  <rect x="10.4" y="15.7" width="2.8" height="1.8" rx="0.9" fill="url(#sidebar-browser-side)" fill-opacity="0.65" />
+  <rect x="10.4" y="19.2" width="3.2" height="1.8" rx="0.9" fill="url(#sidebar-browser-side)" fill-opacity="0.45" />
+  <path d="M17.4 15.4L17.4 24.9L19.9 22.5L21.8 26.1L24.1 25.1L22.2 21.5L25.4 21.4Z" fill="url(#sidebar-browser-page)" stroke="#FFFFFF" stroke-width="0.7" stroke-linejoin="round" />
 </svg>
