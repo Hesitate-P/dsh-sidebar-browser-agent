@@ -21,13 +21,14 @@
  */
 window.__ModuleLoader__.load({
   id: 'dsh-sidebar-browser-agent',
-  factory() {
+  factory(require) {
+    const React = require('react')
     const PLUGIN_ROOT = 'plugin/sidebar-browser-agent'
     const MAX_BACKOFF_MS = 5_000
     const BASE_BACKOFF_MS = 400
     const MAX_EVAL_CHARS = 100_000
     /** Plugin version reported by diagnostics; keep in sync with package.json. */
-    const PLUGIN_VERSION = '0.2.1'
+    const PLUGIN_VERSION = '0.2.2'
     const MAX_SCREENSHOT_WIDTH = 1_400
     const MAX_SCREENSHOT_BASE64 = 12_000_000
 
@@ -983,6 +984,14 @@ window.__ModuleLoader__.load({
         webviews: document.querySelectorAll('webview').length,
         tabWrappers: document.querySelectorAll('[data-sidebar-right-tab]').length,
       }
+      try {
+        const configForms = ctx.get?.('configForms')
+        const form = configForms?.get?.(CONFIG_ENTRY_ID)
+        const snapshot = form?.getSnapshot?.()
+        if (snapshot !== undefined) checks.configForm = snapshot.status
+      } catch (error) {
+        void error
+      }
       const boot = globalThis.__DSH_BOOT__
       if (boot !== null && typeof boot === 'object' && boot.release !== null && typeof boot.release === 'object') {
         checks.harness = typeof boot.release.version === 'string' ? boot.release.version : 'unknown'
@@ -1023,6 +1032,269 @@ window.__ModuleLoader__.load({
         }
       }
       return checks
+    }
+
+    // ---------------------------------------------------------------------
+    // Plugin row configuration page (Plugin Manager -> bundle -> row)
+    // ---------------------------------------------------------------------
+
+    /** Locale namespace for this plugin's configuration page copy. */
+    const UI_NS = 'sidebarBrowserAgent'
+    /** Row this plugin's Host row is declared under (used as the settings namespace). */
+    const CONFIG_ENTRY_ID = 'sidebar-browser-agent'
+    /** Config page slot key: `<bundle package>#<row id>`. */
+    const CONFIG_ROW_KEY = 'dsh-sidebar-browser-agent#sidebar-browser-agent'
+
+    /** English copy for the configuration page. */
+    const CONFIG_EN = {
+      'config.summary': 'Configure the sidebar browser tools: enabled switches, allowed hosts and permissions.',
+      'config.heading': 'Sidebar browser agent',
+      'config.intro': 'Applies immediately to this profile. Page content work needs the DSH Desktop native browser carrier.',
+      'config.enabled': 'Enable agent tools',
+      'config.enabledHint': 'Register sidebar_browser and sidebar_page for agents in this profile.',
+      'config.hosts': 'Allowed hosts',
+      'config.hostsHint': 'One host per line; empty allows every HTTP(S) host. An entry also allows its subdomains; localhost:8765 matches that exact host and port.',
+      'config.hostsPlaceholder': 'example.com\nlocalhost:8765',
+      'config.allowEval': 'Allow eval',
+      'config.allowEvalHint': 'Run arbitrary JavaScript in the page (sidebar_page action "eval").',
+      'config.allowNativeInput': 'Allow native input',
+      'config.allowNativeInputHint': 'Native click, type and press actions (sidebar_page click/type/press).',
+      'config.save': 'Save',
+      'config.saving': 'Saving…',
+      'config.saved': 'Saved.',
+      'config.failed': 'The host rejected this change; the form was reloaded.',
+      'config.reset': 'Reset',
+      'config.loading': 'Loading configuration…',
+      'config.unavailable': 'Configuration is not editable in this profile (the settings service is unavailable).',
+      'config.readOnly': 'This profile is read-only.',
+      'config.readOnlyHint': 'The host does not accept configuration writes here.',
+    }
+
+    /** Chinese copy for the configuration page. */
+    const CONFIG_ZH = {
+      'config.summary': '配置侧栏浏览器工具：启用开关、域名白名单与权限。',
+      'config.heading': '侧栏浏览器 Agent 控制',
+      'config.intro': '修改立即对本 profile 生效。页面内容操作需要 DSH Desktop 原生浏览器载体。',
+      'config.enabled': '启用 Agent 工具',
+      'config.enabledHint': '为本 profile 中的 Agent 注册 sidebar_browser 与 sidebar_page。',
+      'config.hosts': '允许的域名',
+      'config.hostsHint': '每行一个；留空允许所有 HTTP(S) 域名。写 example.com 同时允许其子域；localhost:8765 精确匹配该主机与端口。',
+      'config.hostsPlaceholder': 'example.com\nlocalhost:8765',
+      'config.allowEval': '允许 eval',
+      'config.allowEvalHint': '允许在页面中执行任意 JavaScript（sidebar_page 的 eval 动作）。',
+      'config.allowNativeInput': '允许原生输入',
+      'config.allowNativeInputHint': '允许原生点击、输入与按键（sidebar_page 的 click/type/press）。',
+      'config.save': '保存',
+      'config.saving': '正在保存…',
+      'config.saved': '已保存。',
+      'config.failed': 'Host 拒绝了这次修改，表单已重新加载。',
+      'config.reset': '重置',
+      'config.loading': '正在加载配置…',
+      'config.unavailable': '此 profile 无法编辑配置（settings 服务不可用）。',
+      'config.readOnly': '此 profile 为只读。',
+      'config.readOnlyHint': 'Host 不接受在此写入配置。',
+    }
+
+    const configStyles = {
+      root: { display: 'flex', flexDirection: 'column', gap: '18px', maxWidth: '620px', color: 'var(--dsw-alias-label-primary)', fontSize: '13px', lineHeight: '20px' },
+      heading: { margin: 0, fontSize: '15px', fontWeight: 600, lineHeight: '22px' },
+      hint: { color: 'var(--dsw-alias-label-secondary)', margin: 0, fontSize: '12px', lineHeight: '18px' },
+      notice: { color: 'var(--dsw-alias-label-secondary)', margin: 0, fontSize: '12px', lineHeight: '18px' },
+      error: { color: 'var(--dsw-alias-state-error-primary)', margin: 0, fontSize: '12px', lineHeight: '18px' },
+      field: { display: 'flex', flexDirection: 'column', gap: '4px' },
+      checkRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', cursor: 'pointer' },
+      checkText: { display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 },
+      checkLabel: { fontWeight: 500 },
+      textarea: {
+        boxSizing: 'border-box',
+        width: '100%',
+        minHeight: '88px',
+        padding: '8px 10px',
+        color: 'var(--dsw-alias-label-primary)',
+        background: 'var(--dsw-alias-bg-layer-1)',
+        border: '0.5px solid var(--dsw-alias-border-l4)',
+        borderRadius: '8px',
+        font: 'inherit',
+        resize: 'vertical',
+        outline: 'none',
+      },
+      actions: { display: 'flex', alignItems: 'center', gap: '10px' },
+      button: {
+        height: '30px',
+        padding: '0 14px',
+        color: 'var(--dsw-alias-label-primary)',
+        background: 'var(--dsw-alias-bg-layer-3)',
+        border: '0.5px solid var(--dsw-alias-border-l4)',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        font: 'inherit',
+      },
+      primary: {
+        height: '30px',
+        padding: '0 14px',
+        color: 'var(--dsw-alias-label-primary-foreground, #fff)',
+        background: 'var(--dsw-alias-state-business-primary, #1f6feb)',
+        border: '0.5px solid transparent',
+        borderRadius: '8px',
+        cursor: 'pointer',
+        font: 'inherit',
+      },
+    }
+
+    /**
+     * Render the allowlist as one host per line.
+     * @param hosts - configured host entries.
+     * @returns the textarea text.
+     */
+    function hostsToText(hosts) {
+      return Array.isArray(hosts) ? hosts.join('\n') : ''
+    }
+
+    /**
+     * Parse the allowlist textarea.
+     * @param text - comma or newline separated host entries.
+     * @returns normalized, de-duplicated host entries.
+     */
+    function textToHosts(text) {
+      const entries = String(text === undefined || text === null ? '' : text)
+        .split(/[\n,]+/)
+        .map((entry) => entry.trim().toLowerCase())
+        .filter((entry) => entry !== '')
+      return [...new Set(entries)]
+    }
+
+    /**
+     * Build the Host mutation operations for one staged draft.
+     * @param draft - local form draft.
+     * @param value - current Host values for the row.
+     * @returns ordered `{ op: 'set', path, value }` operations (empty when unchanged).
+     */
+    function configOps(draft, value) {
+      const current = value ?? {}
+      const ops = []
+      for (const field of ['enabled', 'allowEval', 'allowNativeInput']) {
+        const next = draft[field] !== false
+        const before = current[field] !== false
+        if (next !== before) ops.push({ op: 'set', path: [field], value: next })
+      }
+      const nextHosts = textToHosts(draft.hostsText)
+      const beforeHosts = hostsToText(current.allowedHosts).split('\n').map((entry) => entry.trim().toLowerCase()).filter((entry) => entry !== '')
+      if (JSON.stringify(nextHosts) !== JSON.stringify(beforeHosts)) ops.push({ op: 'set', path: ['allowedHosts'], value: nextHosts })
+      return ops
+    }
+
+    /**
+     * Build the local draft from one Host value snapshot.
+     * @param value - projected volatile config.
+     * @returns the draft.
+     */
+    function draftOf(value) {
+      const current = value ?? {}
+      return {
+        enabled: current.enabled !== false,
+        allowEval: current.allowEval !== false,
+        allowNativeInput: current.allowNativeInput !== false,
+        hostsText: hostsToText(current.allowedHosts),
+      }
+    }
+
+    /**
+     * One switch row.
+     * @param t - locale translate function.
+     * @param options - label, hint, checked, disabled, onChange.
+     * @returns the row element.
+     */
+    function switchRow(t, options) {
+      return React.createElement('label', { style: configStyles.checkRow },
+        React.createElement('input', {
+          type: 'checkbox',
+          checked: options.checked,
+          disabled: options.disabled,
+          onChange: (event) => options.onChange(event.target.checked),
+        }),
+        React.createElement('span', { style: configStyles.checkText },
+          React.createElement('span', { style: configStyles.checkLabel }, t(options.label)),
+          React.createElement('span', { style: configStyles.hint }, t(options.hint)),
+        ),
+      )
+    }
+
+    /** The staged form for one row's volatile configuration. */
+    function ConfigEditor(props) {
+      const t = props.t
+      const state = props.form.state
+      const value = state.value ?? {}
+      const [draft, setDraft] = React.useState(() => draftOf(value))
+      const [busy, setBusy] = React.useState(false)
+      const [notice, setNotice] = React.useState('')
+      React.useEffect(() => {
+        setDraft(draftOf(value))
+        setNotice('')
+      }, [state.revision, state.status])
+      if (state.status === 'loading') return React.createElement('p', { style: configStyles.notice }, t('config.loading'))
+      if (state.status !== 'ready' || value === undefined) return React.createElement('p', { style: configStyles.notice }, t('config.unavailable'))
+      const readOnly = state.writable === false
+      const ops = configOps(draft, value)
+      const save = async () => {
+        if (ops.length === 0 || busy) return
+        setBusy(true)
+        setNotice(t('config.saving'))
+        try {
+          const accepted = await props.form.mutate(ops, state.revision)
+          setNotice(accepted === true ? t('config.saved') : t('config.failed'))
+        } catch (error) {
+          setNotice(`${t('config.failed')} (${error instanceof Error ? error.message : String(error)})`)
+        } finally {
+          setBusy(false)
+        }
+      }
+      return React.createElement('div', { style: configStyles.root },
+        React.createElement('h3', { style: configStyles.heading }, t('config.heading')),
+        React.createElement('p', { style: configStyles.hint }, t('config.intro')),
+        readOnly ? React.createElement('p', { style: configStyles.hint }, `${t('config.readOnly')} ${t('config.readOnlyHint')}`) : null,
+        switchRow(t, { label: 'config.enabled', hint: 'config.enabledHint', checked: draft.enabled, disabled: readOnly, onChange: (next) => setDraft({ ...draft, enabled: next }) }),
+        React.createElement('div', { style: configStyles.field },
+          React.createElement('span', { style: configStyles.checkLabel }, t('config.hosts')),
+          React.createElement('span', { style: configStyles.hint }, t('config.hostsHint')),
+          React.createElement('textarea', {
+            style: configStyles.textarea,
+            rows: 4,
+            spellCheck: false,
+            disabled: readOnly,
+            placeholder: t('config.hostsPlaceholder'),
+            value: draft.hostsText,
+            onChange: (event) => setDraft({ ...draft, hostsText: event.target.value }),
+          }),
+        ),
+        switchRow(t, { label: 'config.allowEval', hint: 'config.allowEvalHint', checked: draft.allowEval, disabled: readOnly, onChange: (next) => setDraft({ ...draft, allowEval: next }) }),
+        switchRow(t, { label: 'config.allowNativeInput', hint: 'config.allowNativeInputHint', checked: draft.allowNativeInput, disabled: readOnly, onChange: (next) => setDraft({ ...draft, allowNativeInput: next }) }),
+        React.createElement('div', { style: configStyles.actions },
+          React.createElement('button', {
+            type: 'button',
+            style: configStyles.primary,
+            disabled: readOnly || busy || ops.length === 0,
+            onClick: save,
+          }, busy ? t('config.saving') : t('config.save')),
+          React.createElement('button', {
+            type: 'button',
+            style: configStyles.button,
+            disabled: readOnly || busy || ops.length === 0,
+            onClick: () => { setDraft(draftOf(value)); setNotice('') },
+          }, t('config.reset')),
+          React.createElement('span', { style: notice.startsWith(t('config.failed')) ? configStyles.error : configStyles.notice }, notice),
+        ),
+      )
+    }
+
+    /**
+     * The `plugins.row.config` page: a summary line and the staged form.
+     * @param props - `{ view, form, t }` from the Plugins page.
+     * @returns text for the summary, the form for the page.
+     */
+    function ConfigPage(props) {
+      if (props.view === 'summary') return props.t('config.summary')
+      if (props.form === undefined) return React.createElement('p', { style: configStyles.hint }, props.t('config.unavailable'))
+      return React.createElement(ConfigEditor, { form: props.form, t: props.t })
     }
 
     // ---------------------------------------------------------------------
@@ -1292,10 +1564,17 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      inject: ['sidebarRight'],
+      inject: ['sidebarRight', 'slots', 'locale'],
       apply(ctx) {
         ctx.effect(() => startBridge(ctx), 'sidebar-browser-agent: bridge')
+        ctx.effect(() => ctx.locale.register(UI_NS, { en: CONFIG_EN, zh: CONFIG_ZH }), 'sidebar-browser-agent: config locale')
+        ctx.effect(() => ctx.slots.inject('plugins.row.config', () => ctx.slots.register({
+          name: 'plugins.row.config',
+          key: CONFIG_ROW_KEY,
+          locale: UI_NS,
+        }, ConfigPage)), 'sidebar-browser-agent: config page')
       },
+      __test: { hostsToText, textToHosts, configOps, draftOf, CONFIG_ROW_KEY, CONFIG_ENTRY_ID },
     }
   },
 })

@@ -439,8 +439,21 @@ vm.runInContext(source, sandbox, { filename: 'client.js' })
 
 check('module registered', captured !== undefined && captured.id === 'dsh-sidebar-browser-agent')
 
-const moduleExports = captured.factory(() => {
-  throw new Error('no require expected')
+/** Minimal React stand-in: enough to render the configuration page once. */
+const mockReact = {
+  createElement(type, props, ...children) {
+    return { type, props: props ?? {}, children }
+  },
+  useState(initial) {
+    const value = typeof initial === 'function' ? initial() : initial
+    return [value, () => {}]
+  },
+  useEffect() {},
+}
+
+const moduleExports = captured.factory((name) => {
+  if (name === 'react') return mockReact
+  throw new Error(`unexpected require(${name})`)
 })
 
 const waitFor = async (predicate, timeout = 3000) => {
@@ -460,17 +473,45 @@ async function send(command) {
 }
 
 async function main() {
-  let stopBridge
+  const disposers = []
+  const slotRegistrations = []
+  const localeRegistrations = []
+  const fakeConfigForms = {
+    get: () => ({
+      getSnapshot: () => ({
+        status: 'ready',
+        writable: true,
+        revision: 1,
+        value: { enabled: true, allowEval: true, allowNativeInput: true, allowedHosts: ['example.test'] },
+      }),
+    }),
+  }
   moduleExports.apply({
     sidebarRight: sidebar,
-    get: () => undefined,
+    get: (name) => (name === 'configForms' ? fakeConfigForms : undefined),
     effect(callback) {
-      stopBridge = callback()
+      disposers.push(callback())
       return () => {}
     },
+    slots: {
+      inject(_name, callback) {
+        return callback()
+      },
+      register(options, component) {
+        slotRegistrations.push({ options, component })
+        return () => {}
+      },
+    },
+    locale: {
+      register(ns, dicts) {
+        localeRegistrations.push({ ns, dicts })
+        return () => {}
+      },
+    },
   })
+  const stopBridge = disposers[0]
 
-  check('bridge started', typeof stopBridge === 'function')
+  check('bridge started', typeof stopBridge === 'function' && disposers.length === 3, disposers.length)
   await waitFor(() => reports.length > 0)
   check('started report carries carrier', reports[0]?.status === 'started' && reports[0]?.carrier === 'electron-webview', reports[0])
   await waitFor(() => pendingPoll !== null)
@@ -492,6 +533,46 @@ async function main() {
   check('status checks native API', Array.isArray(checks?.api)
     && ['executeJavaScript', 'capturePage', 'sendInputEvent', 'loadURL', 'reload', 'getURL', 'getTitle'].every((name) => checks.api.includes(name)), checks?.api)
   check('status checks guest URL', checks?.guestUrl === 'https://example.test/page' && checks?.guestLoading === false, checks)
+  check('status checks config form', checks?.configForm === 'ready', checks?.configForm)
+
+  // --- configuration page: locale, slot registration and rendering ---
+  const localeEntry = localeRegistrations.find((entry) => entry.ns === 'sidebarBrowserAgent')
+  check('config locale registered', localeEntry !== undefined && localeEntry.dicts.en !== undefined && localeEntry.dicts.zh !== undefined, localeRegistrations.map((entry) => entry.ns))
+  const slotEntry = slotRegistrations.find((entry) => entry.options?.name === 'plugins.row.config')
+  check('row config slot registered', slotEntry !== undefined
+    && slotEntry.options.key === 'dsh-sidebar-browser-agent#sidebar-browser-agent'
+    && slotEntry.options.locale === 'sidebarBrowserAgent', slotEntry?.options)
+  const configPage = slotEntry?.component
+  check('config summary renders', configPage({ view: 'summary', t: (key) => key }) === 'config.summary', configPage?.name)
+
+  const testHook = moduleExports.__test
+  check('config helpers exported', testHook !== undefined && typeof testHook.configOps === 'function', Object.keys(moduleExports))
+  check('hosts text round-trip', testHook.hostsToText(['example.com', 'localhost:8765']) === 'example.com\nlocalhost:8765'
+    && JSON.stringify(testHook.textToHosts('example.com, LocalHost:8765\n\nexample.com')) === JSON.stringify(['example.com', 'localhost:8765']), testHook.textToHosts('example.com, LocalHost:8765\n\nexample.com'))
+  const ops = testHook.configOps(
+    { enabled: false, allowEval: true, allowNativeInput: true, hostsText: 'example.com\nlocalhost:8765' },
+    { enabled: true, allowEval: true, allowNativeInput: true, allowedHosts: ['example.com'] },
+  )
+  check('config ops describe changes', JSON.stringify(ops) === JSON.stringify([
+    { op: 'set', path: ['enabled'], value: false },
+    { op: 'set', path: ['allowedHosts'], value: ['example.com', 'localhost:8765'] },
+  ]), JSON.stringify(ops))
+  const pageTree = configPage({ view: 'page', t: (key) => key, form: { state: fakeConfigForms.get().getSnapshot(), mutate: async () => true } })
+  const flatten = (input, found = []) => {
+    if (input === null || input === undefined || typeof input !== 'object') return found
+    if (typeof input.type === 'function') {
+      flatten(input.type(input.props ?? {}), found)
+      return found
+    }
+    found.push(input)
+    for (const child of input.children ?? []) flatten(child, found)
+    return found
+  }
+  const pageNodes = flatten(pageTree)
+  check('config page renders heading and switches',
+    pageNodes.some((node) => node.type === 'h3' && node.children?.[0] === 'config.heading')
+    && pageNodes.filter((node) => node.type === 'input' && node.props.type === 'checkbox').length === 3
+    && pageNodes.some((node) => node.type === 'textarea'), pageNodes.map((node) => node.type).join(','))
 
   // --- tab management ---
   const open = await send({ id: 'o1', action: 'open', sessionId: 'session-1', url: 'https://example.test/new' })

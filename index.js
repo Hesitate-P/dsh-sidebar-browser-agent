@@ -20,7 +20,7 @@ import z from './vendor/schemastery/index.mjs'
 export const name = 'dsh-sidebar-browser-agent'
 
 /** Plugin version reported by diagnostics; keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.2.1'
+export const PLUGIN_VERSION = '0.2.2'
 
 /** Services that must exist before this plugin mounts. */
 export const inject = ['webServer', 'connection', 'tools']
@@ -33,10 +33,10 @@ export const inject = ['webServer', 'connection', 'tools']
  * applies defaults, and Plugin Manager renders the fields for editing.
  */
 export const Config = z.object({
-  enabled: z.boolean().default(true).description('Register the sidebar_browser and sidebar_page agent tools.'),
-  allowedHosts: z.array(z.string()).default([]).description('Limit "open" and "navigate" to these hosts. An entry matches that exact host or a subdomain suffix; an empty list allows every HTTP(S) host.'),
-  allowEval: z.boolean().default(true).description('Allow sidebar_page action "eval" (arbitrary JavaScript in the page).'),
-  allowNativeInput: z.boolean().default(true).description('Allow sidebar_page click, type and press actions (native mouse and keyboard input).'),
+  enabled: z.boolean().default(true).volatile().description('Register the sidebar_browser and sidebar_page agent tools.'),
+  allowedHosts: z.array(z.string()).default([]).volatile().description('Limit "open" and "navigate" to these hosts. An entry matches that exact host or a subdomain suffix; an empty list allows every HTTP(S) host.'),
+  allowEval: z.boolean().default(true).volatile().description('Allow sidebar_page action "eval" (arbitrary JavaScript in the page).'),
+  allowNativeInput: z.boolean().default(true).volatile().description('Allow sidebar_page click, type and press actions (native mouse and keyboard input).'),
 })
 
 /** Routes the page half talks to. */
@@ -182,14 +182,30 @@ function normalizeHttpUrl(raw, action) {
  * @param config - config object handed to apply (defaults already applied by the loader).
  * @returns the resolved switches.
  */
-function normalizeConfig(config) {
+function fieldValue(field, fallback) {
+  if (field !== null && typeof field === 'object' && typeof field.get === 'function') return field.get()
+  if (field === undefined) return fallback
+  return field
+}
+
+/**
+ * Read the switch values currently in force.
+ *
+ * The declaration marks every field `.volatile()`, so the Loader hands the
+ * plugin stable references; editing the row in Plugin Manager (or the profile
+ * patch) updates those references without restarting the plugin.
+ * @param config - raw plugin config from `apply` (volatile fields are references).
+ * @returns the resolved switches.
+ */
+function liveConfig(config) {
   const raw = config === null || typeof config !== 'object' ? {} : config
+  const hosts = fieldValue(raw.allowedHosts, [])
   return {
-    enabled: raw.enabled !== false,
-    allowEval: raw.allowEval !== false,
-    allowNativeInput: raw.allowNativeInput !== false,
-    allowedHosts: Array.isArray(raw.allowedHosts)
-      ? raw.allowedHosts.filter((entry) => typeof entry === 'string' && entry.trim() !== '').map((entry) => entry.trim().toLowerCase())
+    enabled: fieldValue(raw.enabled, true) !== false,
+    allowEval: fieldValue(raw.allowEval, true) !== false,
+    allowNativeInput: fieldValue(raw.allowNativeInput, true) !== false,
+    allowedHosts: Array.isArray(hosts)
+      ? hosts.filter((entry) => typeof entry === 'string' && entry.trim() !== '').map((entry) => entry.trim().toLowerCase())
       : [],
   }
 }
@@ -231,7 +247,7 @@ function joinNotes(parts) {
 function hostFacts(ctx, config) {
   const attachments = ctx.get('attachments')
   const attachmentsReady = attachments !== undefined && typeof attachments.saveImage === 'function'
-  return `host-plugin=${PLUGIN_VERSION}; config=${JSON.stringify(config)}; attachments=${attachmentsReady ? 'available' : 'missing (screenshots unavailable)'}`
+  return `host-plugin=${PLUGIN_VERSION}; config=${JSON.stringify(liveConfig(config))}; attachments=${attachmentsReady ? 'available' : 'missing (screenshots unavailable)'}`
 }
 
 /**
@@ -241,6 +257,7 @@ function hostFacts(ctx, config) {
  * @returns the list of problems found.
  */
 function selfCheck(ctx, config) {
+  const current = liveConfig(config)
   const problems = []
   const webServer = ctx.get('webServer')
   if (webServer === undefined || typeof webServer.register !== 'function') problems.push('webServer service is missing route registration')
@@ -249,7 +266,7 @@ function selfCheck(ctx, config) {
   if (ctx.get('tools') === undefined) problems.push('tools service is missing')
   const attachments = ctx.get('attachments')
   if (attachments === undefined || typeof attachments.saveImage !== 'function') problems.push('attachments service is missing; screenshots will be unavailable')
-  const summary = `sidebar-browser-agent ${PLUGIN_VERSION}: ready (enabled=${config.enabled}, allowEval=${config.allowEval}, allowNativeInput=${config.allowNativeInput}, allowedHosts=${config.allowedHosts.length})`
+  const summary = `sidebar-browser-agent ${PLUGIN_VERSION}: ready (enabled=${current.enabled}, allowEval=${current.allowEval}, allowNativeInput=${current.allowNativeInput}, allowedHosts=${current.allowedHosts.length})`
   const logger = ctx.logger
   if (problems.length > 0) {
     if (typeof logger?.warn === 'function') logger.warn(`${summary}; self-check: ${problems.join('; ')}`)
@@ -1007,7 +1024,7 @@ function registerBrowserTool(ctx, bridge, config) {
       const command = { action, sessionId }
       if (URL_ACTIONS.has(action)) {
         command.url = normalizeHttpUrl(rawArgs.url, action)
-        assertHostAllowed(command.url, config)
+        assertHostAllowed(command.url, liveConfig(config))
       }
       if (TAB_ID_ACTIONS.has(action)) {
         const tabId = requireString(rawArgs.tabId, 'tabId')
@@ -1019,7 +1036,7 @@ function registerBrowserTool(ctx, bridge, config) {
       if (result.ok !== true) throwPageFailure(result, 'the sidebar browser did not complete the command')
       return result.value
     },
-  })
+  }, { when: () => liveConfig(config).enabled })
 }
 
 /**
@@ -1040,8 +1057,9 @@ function registerPageTool(ctx, bridge, config) {
       if (rawArgs === null || typeof rawArgs !== 'object' || Array.isArray(rawArgs)) throw new Error('sidebar_page requires an object of arguments')
       const action = rawArgs.action
       if (typeof action !== 'string' || !PAGE_ACTIONS.includes(action)) throw new Error(`sidebar_page action must be one of: ${PAGE_ACTIONS.join(', ')}`)
-      if (action === 'eval' && config.allowEval !== true) throw new Error('sidebar_page action "eval" is disabled by the plugin configuration')
-      if ((action === 'click' || action === 'type' || action === 'press') && config.allowNativeInput !== true) {
+      const current = liveConfig(config)
+      if (action === 'eval' && current.allowEval !== true) throw new Error('sidebar_page action "eval" is disabled by the plugin configuration')
+      if ((action === 'click' || action === 'type' || action === 'press') && current.allowNativeInput !== true) {
         throw new Error('sidebar_page click/type/press actions are disabled by the plugin configuration')
       }
       const sessionId = sessionIdOf(exec)
@@ -1140,7 +1158,7 @@ function registerPageTool(ctx, bridge, config) {
         },
       }
     },
-  })
+  }, { when: () => liveConfig(config).enabled })
 }
 
 /**
@@ -1149,13 +1167,10 @@ function registerPageTool(ctx, bridge, config) {
  * @param config - validated plugin configuration.
  */
 export function apply(ctx, config) {
-  const resolved = normalizeConfig(config)
   const bridge = new Bridge(ctx)
   ctx.effect(() => bridge.registerRoutes(), 'sidebar-browser-agent: bridge routes')
-  if (resolved.enabled) {
-    ctx.effect(() => registerBrowserTool(ctx, bridge, resolved), 'sidebar-browser-agent: browser tool')
-    ctx.effect(() => registerPageTool(ctx, bridge, resolved), 'sidebar-browser-agent: page tool')
-  }
+  ctx.effect(() => registerBrowserTool(ctx, bridge, config), 'sidebar-browser-agent: browser tool')
+  ctx.effect(() => registerPageTool(ctx, bridge, config), 'sidebar-browser-agent: page tool')
   ctx.effect(() => () => bridge.dispose(), 'sidebar-browser-agent: bridge lifetime')
-  selfCheck(ctx, resolved)
+  selfCheck(ctx, config)
 }

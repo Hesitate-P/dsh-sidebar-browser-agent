@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.2
+
+- Plugin Manager configuration page: the bundle's row now has a **Configure**
+  page under Plugins → bundle → row, with switches for `enabled`, `allowedHosts`,
+  `allowEval`, `allowNativeInput`, a save/reset form and localized copy (en/zh).
+- Config fields are declared `.volatile()`: edits apply to the running plugin
+  immediately (tool visibility through a per-step condition, gates read live
+  values) without restarting it.
+- `status` diagnostics now report the configuration form state (`checks.configForm`).
+
 ## 0.2.1
 
 - docs: document GitHub installation, the update flow, the release process, and the

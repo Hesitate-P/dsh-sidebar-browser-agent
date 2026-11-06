@@ -72,20 +72,29 @@
 
 ## 配置
 
-插件声明了原生 Schemastery `Config`（Plugin Manager 的插件详情页可直接编辑；修改后该行重启生效）。
-未配置时使用默认值：
+插件把四个字段声明为**原生 Schemastery `Config`（全部 `.volatile()`）**，并随包提供配置页组件，因此在
+**Plugin Manager → 对应 bundle → 该行 → Configure** 可直接编辑：
+
+| 字段 | 默认 | 说明 |
+| --- | --- | --- |
+| `enabled` | `true` | 是否对 Agent 暴露 `sidebar_browser` / `sidebar_page`（关闭后工具从模型视图隐藏，桥仍在，便于诊断） |
+| `allowedHosts` | `[]` | 允许 `open`/`navigate` 的域名白名单；空 = 全部 HTTP(S)。每行一个，`example.com` 同时允许子域，`localhost:8765` 精确匹配主机与端口 |
+| `allowEval` | `true` | 是否允许 `sidebar_page` 的 `eval`（页面内任意 JS） |
+| `allowNativeInput` | `true` | 是否允许 `click` / `type` / `press` 原生输入 |
+
+因为字段是 volatile 的，保存后**立即生效、无需重启**：工具显隐由每步的 `when` 条件读取实时值，
+各开关也在每次调用时实时读取。页面上的配置来自 profile patch 的持久化写入（与手写 patch 等价）：
 
 ```yaml
 - id: sidebar-browser-agent
   config:
-    enabled: true            # false = 不注册两个工具（桥路由仍在，便于诊断）
-    allowedHosts: []         # 空 = 允许所有 HTTP(S) 主机；否则按精确主机或子域后缀限制 open/navigate
-    allowEval: true          # false = 禁用 sidebar_page eval
-    allowNativeInput: true   # false = 禁用 click / type / press
+    enabled: true
+    allowedHosts: []
+    allowEval: true
+    allowNativeInput: true
 ```
 
-主机名匹配规则：条目 `example.com` 允许 `example.com` 与其任意子域；`*.example.com` 同样按子域后缀处理；
-也可以写带端口的 `localhost:8765`（端口精确匹配）。
+若部署中没有 settings 服务，配置页会显示「不可编辑」，插件本身仍按 patch 中的值运行。
 
 ## 诊断与自检
 
@@ -104,11 +113,11 @@
 Plugin Manager（或 `plugin_manager` 工具）接受 pnpm 能解析的安装规格。仓库带标签后：
 
 ```text
-github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.1
+github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.2
 ```
 
 - Web 界面：Plugins → 添加插件 → 粘贴上面的规格（DSH 会先用 `git ls-remote` 检查 GitHub 连通性，再交给 pnpm 安装）；
-- Agent 工具：`plugin_manager install_bundle(target: "github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.1")`。
+- Agent 工具：`plugin_manager install_bundle(target: "github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.2")`。
 
 也可以直接填 GitHub 仓库 URL。安装完成后 profile 依赖会记录为 `github:...#v0.2.0`，bundle 自动选中并启用。
 `engines.dsh` 声明兼容 `>=0.2.2-rc.1 <0.3.0`，Git 规格在安装后由 DSH 校验版本要求。
@@ -136,7 +145,7 @@ GitHub 安装（`github:...` 规格）不会出现 Update。对应更新方式�
 
 | 安装来源 | 更新方式 |
 | --- | --- |
-| GitHub 安装 | Plugin Manager 中先 **Remove**，再安装新标签：`github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.1`。工具等价操作：`plugin_manager remove_bundle` → `install_bundle`。移除期间插件短暂不可用，重新安装后恢复。 |
+| GitHub 安装 | Plugin Manager 中先 **Remove**，再安装新标签：`github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.2`。工具等价操作：`plugin_manager remove_bundle` → `install_bundle`。移除期间插件短暂不可用，重新安装后恢复。 |
 | npm 安装 | 详情页 **Update**：列出更高版本、校验 `engines.dsh`/peer 后一键替换；失败会回滚并重装旧版本。 |
 
 如果希望 GitHub 安装也具备一键更新：把包发布到 npm（仓库自带 `.github/workflows/publish.yml`，

@@ -108,9 +108,9 @@ function makeHarness() {
     },
     connection: { requestRejection: () => undefined },
     tools: {
-      register(definition) {
+      register(definition, options) {
         if (tools.has(definition.name)) throw new Error(`duplicate tool ${definition.name}`)
-        tools.set(definition.name, definition)
+        tools.set(definition.name, { definition, options })
         return () => tools.delete(definition.name)
       },
     },
@@ -133,13 +133,35 @@ function makeHarness() {
   return { routes, tools, logs, savedImages, attachments, ctx }
 }
 
-/** Validate one raw config through the real native schema, then mount the plugin. */
-function start(rawConfig) {
+/**
+ * Build the config shape the Loader hands to `apply`: every field is a stable
+ * volatile reference whose `.get()` the plugin calls at use time.
+ */
+function liveConfigRefs(initial) {
+  const values = {
+    enabled: true,
+    allowEval: true,
+    allowNativeInput: true,
+    allowedHosts: [],
+    ...initial,
+  }
+  return {
+    values,
+    config: {
+      enabled: { get: () => values.enabled },
+      allowEval: { get: () => values.allowEval },
+      allowNativeInput: { get: () => values.allowNativeInput },
+      allowedHosts: { get: () => values.allowedHosts },
+    },
+  }
+}
+
+/** Mount the plugin with live volatile config references. */
+function start(initial) {
   const harness = makeHarness()
-  const validated = Config['~standard'].validate(rawConfig ?? {})
-  if (validated.issues !== undefined) throw new Error(`config rejected: ${JSON.stringify(validated.issues)}`)
-  apply(harness.ctx, validated.value)
-  return { ...harness, config: validated.value }
+  const live = liveConfigRefs(initial)
+  apply(harness.ctx, live.config)
+  return { ...harness, live }
 }
 
 function makeExec(sessionId = 'session-1') {
@@ -147,9 +169,9 @@ function makeExec(sessionId = 'session-1') {
 }
 
 async function runTool(harness, name, args, sessionId = 'session-1') {
-  const definition = harness.tools.get(name)
-  if (definition === undefined) throw new Error(`${name} is not registered`)
-  return definition.execute(args, makeExec(sessionId))
+  const registration = harness.tools.get(name)
+  if (registration === undefined) throw new Error(`${name} is not registered`)
+  return registration.definition.execute(args, makeExec(sessionId))
 }
 
 // --- fake page over the real bridge handlers ---
@@ -330,19 +352,20 @@ async function expectThrow(run) {
 }
 
 async function main() {
-  // --- Config contract ---
+  // --- Config contract: a native Schemastery schema whose fields are volatile ---
   check('config is native schemastery', Config[Symbol.for('schemastery')] === true && typeof Config.type === 'string' && typeof Config.meta === 'object')
-  const defaults = Config['~standard'].validate({})
-  check('config defaults', defaults.issues === undefined
-    && defaults.value.enabled === true
-    && defaults.value.allowEval === true
-    && defaults.value.allowNativeInput === true
-    && Array.isArray(defaults.value.allowedHosts)
-    && defaults.value.allowedHosts.length === 0, JSON.stringify(defaults))
+  const declared = ['enabled', 'allowedHosts', 'allowEval', 'allowNativeInput']
+  check('config exposes the four switches', declared.every((key) => Config.dict[key] !== undefined), Object.keys(Config.dict ?? {}).join(','))
+  check('config fields are volatile', declared.every((key) => Config.dict[key].meta?.volatile === true), JSON.stringify(declared.map((key) => [key, Config.dict[key]?.meta?.volatile])))
+  check('config defaults', Config.dict.enabled.meta.default === true
+    && Config.dict.allowEval.meta.default === true
+    && Config.dict.allowNativeInput.meta.default === true
+    && Array.isArray(Config.dict.allowedHosts.meta.default)
+    && Config.dict.allowedHosts.meta.default.length === 0, JSON.stringify(declared.map((key) => Config.dict[key].meta.default)))
   const invalid = Config['~standard'].validate({ enabled: 'nope' })
   check('config rejects invalid values', Array.isArray(invalid.issues) && invalid.issues.length > 0, JSON.stringify(invalid))
-  const partial = Config['~standard'].validate({ allowedHosts: ['example.com'] })
-  check('config keeps defaults for omitted fields', partial.value.allowedHosts.length === 1 && partial.value.enabled === true, JSON.stringify(partial.value))
+  const badHosts = Config['~standard'].validate({ allowedHosts: 'example.com' })
+  check('config rejects a non-array host list', Array.isArray(badHosts.issues) && badHosts.issues.length > 0, JSON.stringify(badHosts))
 
   // --- version consistency ---
   check('package version matches host constant', packageJson.version === PLUGIN_VERSION, `${packageJson.version} vs ${PLUGIN_VERSION}`)
@@ -356,7 +379,7 @@ async function main() {
   for (const name of ['sidebar_browser', 'sidebar_page']) {
     let schemaError
     try {
-      assertSupportedJsonSchema(harness.tools.get(name).output.schema)
+      assertSupportedJsonSchema(harness.tools.get(name).definition.output.schema)
     } catch (error) {
       schemaError = error.message
     }
@@ -370,11 +393,24 @@ async function main() {
     && offline.note.includes('attachments=available')
     && offline.note.includes('"enabled":true'), offline.note)
 
-  // --- disabled mount registers no tools ---
+  // --- disabled mount: tools stay registered but their step condition hides them ---
   const disabled = start({ enabled: false })
-  check('disabled config registers no tools', disabled.tools.size === 0, [...disabled.tools.keys()].join(','))
+  check('disabled config keeps both tools registered', disabled.tools.size === 2, [...disabled.tools.keys()].join(','))
+  check('disabled config hides tools from agents', disabled.tools.get('sidebar_browser').options.when() === false
+    && disabled.tools.get('sidebar_page').options.when() === false, JSON.stringify(disabled.tools.get('sidebar_browser').options))
   check('disabled config keeps bridge routes', disabled.routes.size === 3)
   check('disabled config logs ready', disabled.logs.info.some((line) => line.includes('enabled=false')), JSON.stringify(disabled.logs))
+
+  // --- editing a volatile field applies live, without a restart ---
+  const liveHarness = start()
+  check('enabled tool visible by default', liveHarness.tools.get('sidebar_browser').options.when() === true)
+  liveHarness.live.values.enabled = false
+  check('enabled switch hides tools live', liveHarness.tools.get('sidebar_browser').options.when() === false)
+  liveHarness.live.values.enabled = true
+  check('enabled switch restores tools live', liveHarness.tools.get('sidebar_browser').options.when() === true)
+  liveHarness.live.values.allowEval = false
+  const liveEvalBlocked = await expectThrow(() => runTool(liveHarness, 'sidebar_page', { action: 'eval', code: '1+1' }))
+  check('live allowEval gate applies', typeof liveEvalBlocked === 'string' && liveEvalBlocked.includes('"eval" is disabled'), liveEvalBlocked)
 
   // --- configuration gates fire before the bridge ---
   const gated = start({ allowedHosts: ['example.com'], allowEval: false, allowNativeInput: false })
@@ -420,7 +456,7 @@ async function main() {
   const read = await runTool(harness, 'sidebar_page', { action: 'read' })
   await turn
   check('read text value', read.text.includes('Example Domain') && read.mode === 'text', JSON.stringify(read))
-  const readContent = harness.tools.get('sidebar_page').output.render({}, read)
+  const readContent = harness.tools.get('sidebar_page').definition.output.render({}, read)
   check('read render', readContent[0].type === 'text' && readContent[0].text.includes('illustrative examples'), readContent[0].text)
 
   turn = pageTurn(harness, fakePage)
@@ -451,7 +487,7 @@ async function main() {
   await sleep(10)
   const evaluated = await runTool(harness, 'sidebar_page', { action: 'eval', code: '({answer: 42})' })
   await turn
-  const evalContent = harness.tools.get('sidebar_page').output.render({}, evaluated)
+  const evalContent = harness.tools.get('sidebar_page').definition.output.render({}, evaluated)
   check('eval render', evalContent[0].text.includes('{"answer":42}'), evalContent[0].text)
 
   // --- screenshot: attachment conversion + image content block ---
@@ -461,7 +497,7 @@ async function main() {
   await turn
   check('screenshot saved as attachment', harness.savedImages.length === 1 && harness.savedImages[0].mediaType === 'image/png', JSON.stringify(harness.savedImages))
   check('screenshot value strips base64', shot.image.attachmentId === 'attachment-1' && shot.base64 === undefined, JSON.stringify(shot))
-  const shotContent = harness.tools.get('sidebar_page').output.render({}, shot)
+  const shotContent = harness.tools.get('sidebar_page').definition.output.render({}, shot)
   check('screenshot renders image block', shotContent.length === 2 && shotContent[1].type === 'image' && shotContent[1].attachment.attachmentId === 'attachment-1', JSON.stringify(shotContent))
 
   // --- argument validation before the bridge ---
@@ -491,7 +527,7 @@ async function main() {
     ['sidebar_page', evaluated],
     ['sidebar_page', shot],
   ]) {
-    const violations = validateJsonSchemaValue(harness.tools.get(name).output.schema, value, 'value')
+    const violations = validateJsonSchemaValue(harness.tools.get(name).definition.output.schema, value, 'value')
     check(`${name} ${String(value.action)} output validates`, violations.length === 0, violations.join('; '))
   }
 
