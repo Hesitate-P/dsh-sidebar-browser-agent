@@ -12,11 +12,11 @@ import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { apply, Config, PLUGIN_VERSION } from '../index.js'
+import { apply, Config, PLUGIN_VERSION } from '../lib/index.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const packageJson = JSON.parse(fs.readFileSync(path.join(here, '..', 'package.json'), 'utf8'))
-const clientSource = fs.readFileSync(path.join(here, '..', 'client.js'), 'utf8')
+const clientSource = fs.readFileSync(path.join(here, '..', 'lib', 'client.js'), 'utf8')
 
 let failures = 0
 function check(name, condition, detail) {

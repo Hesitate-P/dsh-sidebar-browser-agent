@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const root = path.join(here, '..')
-const source = fs.readFileSync(path.join(root, 'client.js'), 'utf8')
+const source = fs.readFileSync(path.join(root, 'lib', 'client.js'), 'utf8')
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 
 let failures = 0

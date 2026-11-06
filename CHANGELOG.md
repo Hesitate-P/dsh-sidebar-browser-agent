@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.3
+
+- Package entries moved to `lib/index.js` and `lib/client.js` (DSH package
+  convention). A replaced install now resolves a fresh Host module generation,
+  so a GitHub update can load new Host code without a manual restart.
+- `sidebar_browser status` warns when the page half and the running Host half
+  report different versions (`restart the Harness to load the installed Host code`).
+
 ## 0.2.2
 
 - Plugin Manager configuration page: the bundle's row now has a **Configure**

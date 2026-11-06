@@ -16,8 +16,8 @@
 | 文件 | 作用 |
 | --- | --- |
 | `cordis.patch.yml` | bundle patch，插入 Host 插件行（id `sidebar-browser-agent`） |
-| `index.js` | Host 半：配置与开关、`sidebar_browser` / `sidebar_page` 工具、HTTP 长轮询桥、截图转 attachment、启动自检 |
-| `client.js` | 浏览器半：长轮询取命令，用公开 `ctx.sidebarRight` 管理标签、用原生 webview 操作页面；`status` 输出自检信息 |
+| `lib/index.js` | Host 半：配置与开关、`sidebar_browser` / `sidebar_page` 工具、HTTP 长轮询桥、截图转 attachment、启动自检 |
+| `lib/client.js` | 浏览器半：长轮询取命令，用公开 `ctx.sidebarRight` 管理标签、用原生 webview 操作页面；`status` 输出自检信息 |
 | `locale/*.json` | 插件列表显示用的标题与描述（中/英） |
 | `icon.svg` | 插件图标 |
 | `vendor/` | 内置的 MIT 依赖（schemastery + cosmokit），使 link 安装的插件也能声明原生 Config schema，见 `vendor/NOTICE.md` |
@@ -136,7 +136,7 @@ plugin_manager install_bundle(target: /path/to/sidebar-browser-agent)
 ```
 
 profile 以 `link:` 指向该目录，**不要移动或删除它**。Host 半代码修改后重启 Harness
-（或对该行 disable→enable）才会重新加载；`client.js` 修改会被客户端 HMR 自动热换。link 安装没有 Update 按钮。
+（或对该行 disable→enable）才会重新加载；`lib/client.js` 修改会被客户端 HMR 自动热换。link 安装没有 Update 按钮。
 
 ## 更新
 
@@ -147,6 +147,9 @@ GitHub 安装（`github:...` 规格）不会出现 Update。对应更新方式�
 | --- | --- |
 | GitHub 安装 | Plugin Manager 中先 **Remove**，再安装新标签：`github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.2`。工具等价操作：`plugin_manager remove_bundle` → `install_bundle`。移除期间插件短暂不可用，重新安装后恢复。 |
 | npm 安装 | 详情页 **Update**：列出更高版本、校验 `engines.dsh`/peer 后一键替换；失败会回滚并重装旧版本。 |
+
+更新后建议先跑一次 `sidebar_browser status`：页面半与 Host 半版本不一致时它会给出重启提示（DSH 重启后才会
+加载新安装的 Host 代码；自 0.2.3 起入口位于 `lib/`，同路径替换会解析到新的模块代）。
 
 如果希望 GitHub 安装也具备一键更新：把包发布到 npm（仓库自带 `.github/workflows/publish.yml`，
 在 GitHub 配置 `NPM_TOKEN` secret 后推送 `v*` 标签即自动测试并发布），然后把 profile 的安装来源切换到

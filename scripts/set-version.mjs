@@ -24,7 +24,7 @@ const previous = manifest.version
 manifest.version = next
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2) + '\n', 'utf8')
 
-for (const file of ['index.js', 'client.js']) {
+for (const file of ['lib/index.js', 'lib/client.js']) {
   const target = path.join(root, file)
   const source = fs.readFileSync(target, 'utf8')
   if (!source.includes('PLUGIN_VERSION')) throw new Error(`${file} declares no PLUGIN_VERSION constant`)
