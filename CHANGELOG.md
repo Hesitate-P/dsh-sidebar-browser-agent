@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.9
+
+- Polished the official-style plugin page rhythm: field/row spacing, tertiary
+  12px hints, the same input surface and radius the built-in settings pages
+  use, and the shared form footer as the only save action.
+
 ## 0.2.8
 
 - The plugin page now follows the official plugin-page style: the configuration
