@@ -104,11 +104,11 @@
 Plugin Manager（或 `plugin_manager` 工具）接受 pnpm 能解析的安装规格。仓库带标签后：
 
 ```text
-github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.0
+github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.1
 ```
 
 - Web 界面：Plugins → 添加插件 → 粘贴上面的规格（DSH 会先用 `git ls-remote` 检查 GitHub 连通性，再交给 pnpm 安装）；
-- Agent 工具：`plugin_manager install_bundle(target: "github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.0")`。
+- Agent 工具：`plugin_manager install_bundle(target: "github:Hesitate-P/dsh-sidebar-browser-agent#v0.2.1")`。
 
 也可以直接填 GitHub 仓库 URL。安装完成后 profile 依赖会记录为 `github:...#v0.2.0`，bundle 自动选中并启用。
 `engines.dsh` 声明兼容 `>=0.2.2-rc.1 <0.3.0`，Git 规格在安装后由 DSH 校验版本要求。
@@ -160,7 +160,9 @@ npm run pack:check       # 校验 npm pack 文件清单
 npm pack                 # 生成 dsh-sidebar-browser-agent-0.2.0.tgz
 ```
 
-`files` 已显式包含运行文件、`vendor/`、`test/`、`README.md`、`LICENSE`。
+`files` 已显式包含运行文件、`vendor/`、`test/`、`README.md`、`CHANGELOG.md`、`LICENSE`。
+
+变更记录见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 测试
 

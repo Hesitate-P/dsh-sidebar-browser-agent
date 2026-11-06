@@ -20,7 +20,7 @@ import z from './vendor/schemastery/index.mjs'
 export const name = 'dsh-sidebar-browser-agent'
 
 /** Plugin version reported by diagnostics; keep in sync with package.json. */
-export const PLUGIN_VERSION = '0.2.0'
+export const PLUGIN_VERSION = '0.2.1'
 
 /** Services that must exist before this plugin mounts. */
 export const inject = ['webServer', 'connection', 'tools']
