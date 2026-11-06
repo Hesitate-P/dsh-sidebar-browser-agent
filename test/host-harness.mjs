@@ -142,6 +142,7 @@ function liveConfigRefs(initial) {
     enabled: true,
     allowEval: true,
     allowNativeInput: true,
+    allowUploads: true,
     allowedHosts: [],
     ...initial,
   }
@@ -151,6 +152,7 @@ function liveConfigRefs(initial) {
       enabled: { get: () => values.enabled },
       allowEval: { get: () => values.allowEval },
       allowNativeInput: { get: () => values.allowNativeInput },
+      allowUploads: { get: () => values.allowUploads },
       allowedHosts: { get: () => values.allowedHosts },
     },
   }
@@ -354,12 +356,13 @@ async function expectThrow(run) {
 async function main() {
   // --- Config contract: a native Schemastery schema whose fields are volatile ---
   check('config is native schemastery', Config[Symbol.for('schemastery')] === true && typeof Config.type === 'string' && typeof Config.meta === 'object')
-  const declared = ['enabled', 'allowedHosts', 'allowEval', 'allowNativeInput']
-  check('config exposes the four switches', declared.every((key) => Config.dict[key] !== undefined), Object.keys(Config.dict ?? {}).join(','))
+  const declared = ['enabled', 'allowedHosts', 'allowEval', 'allowNativeInput', 'allowUploads']
+  check('config exposes the five switches', declared.every((key) => Config.dict[key] !== undefined), Object.keys(Config.dict ?? {}).join(','))
   check('config fields are volatile', declared.every((key) => Config.dict[key].meta?.volatile === true), JSON.stringify(declared.map((key) => [key, Config.dict[key]?.meta?.volatile])))
   check('config defaults', Config.dict.enabled.meta.default === true
     && Config.dict.allowEval.meta.default === true
     && Config.dict.allowNativeInput.meta.default === true
+    && Config.dict.allowUploads.meta.default === true
     && Array.isArray(Config.dict.allowedHosts.meta.default)
     && Config.dict.allowedHosts.meta.default.length === 0, JSON.stringify(declared.map((key) => Config.dict[key].meta.default)))
   const invalid = Config['~standard'].validate({ enabled: 'nope' })
@@ -538,6 +541,18 @@ async function main() {
   check('batch refuses screenshots', typeof batchScreenshot === 'string' && batchScreenshot.includes('batch steps cannot take screenshots'), batchScreenshot)
   const nestedBatch = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'batch', batch: [{ action: 'batch', batch: [] }] }))
   check('batch refuses nesting', typeof nestedBatch === 'string' && nestedBatch.includes('cannot be nested'), nestedBatch)
+  const badDownloadScheme = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'download', url: 'javascript:alert(1)' }))
+  check('download URL scheme validated', typeof badDownloadScheme === 'string' && badDownloadScheme.includes('download "url" must be'), badDownloadScheme)
+  const missingDownloadTarget = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'download' }))
+  check('download needs a URL or target', typeof missingDownloadTarget === 'string' && missingDownloadTarget.includes('needs a "ref"'), missingDownloadTarget)
+  const missingUploadPaths = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'upload', selector: '#file' }))
+  check('upload needs paths', typeof missingUploadPaths === 'string' && missingUploadPaths.includes('needs "paths"'), missingUploadPaths)
+  const relativeUpload = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'upload', selector: '#file', paths: ['relative/file.txt'] }))
+  check('upload rejects relative paths', typeof relativeUpload === 'string' && relativeUpload.includes('[bad-path]'), relativeUpload)
+  const gatedUpload = await expectThrow(() => runTool(start({ allowUploads: false }), 'sidebar_page', { action: 'upload', selector: '#file', paths: ['/tmp/x'] }))
+  check('allowUploads=false blocks upload', typeof gatedUpload === 'string' && gatedUpload.includes('allowUploads'), gatedUpload)
+  const batchUpload = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'batch', batch: [{ action: 'upload', selector: '#file', paths: ['/tmp/x'] }] }))
+  check('batch refuses uploads', typeof batchUpload === 'string' && batchUpload.includes('cannot upload files'), batchUpload)
   const badUrl = await expectThrow(() => runTool(harness, 'sidebar_browser', { action: 'open', url: 'file:///etc/passwd' }))
   check('non-http url rejected', typeof badUrl === 'string' && badUrl.includes('only opens http://'), badUrl)
 

@@ -221,6 +221,62 @@ const guestContext = {
   },
   performance: { now: () => Date.now() },
   CSS: { escape: (value) => String(value) },
+  Blob: class FakeBlob {
+    constructor(parts, options) {
+      this.parts = parts
+      this.type = (options && options.type) || ''
+      this.size = parts.reduce((total, part) => total + (part.byteLength || part.length || 0), 0)
+    }
+  },
+  File: class FakeFile {
+    constructor(parts, name, options) {
+      this.parts = parts
+      this.name = name
+      this.type = (options && options.type) || ''
+      this.size = parts.reduce((total, part) => total + (part.byteLength || part.length || 0), 0)
+    }
+  },
+  DataTransfer: class FakeDataTransfer {
+    constructor() {
+      this._files = []
+      this._data = {}
+      this.items = { add: (file) => { this._files.push(file) } }
+    }
+    get files() { return this._files }
+    setData(type, value) { this._data[type] = String(value) }
+    getData(type) { return this._data[type] || '' }
+  },
+  FileReader: class FakeFileReader {
+    readAsDataURL(blob) {
+      this.result = 'data:' + (blob.type || 'application/octet-stream') + ';base64,' + (blob.base64 || '')
+      setTimeout(() => { if (typeof this.onload === 'function') this.onload() }, 0)
+    }
+  },
+  atob: (value) => Buffer.from(String(value), 'base64').toString('binary'),
+  fetch: async (url) => {
+    const parsed = String(url)
+    const match = /^data:([^;]+);base64,(.*)$/.exec(parsed)
+    if (match === null) throw new Error('network mock only serves data: URLs')
+    const base64 = match[2]
+    const type = match[1]
+    const size = Buffer.from(base64, 'base64').length
+    return {
+      ok: true,
+      status: 200,
+      headers: {
+        get(name) {
+          const key = String(name).toLowerCase()
+          if (key === 'content-type') return type
+          if (key === 'content-length') return String(size)
+          if (key === 'content-disposition') return 'attachment; filename="hi.txt"'
+          return null
+        },
+      },
+      async blob() {
+        return { size, type, base64 }
+      },
+    }
+  },
   Event: class FakeEvent {
     constructor(type, init) {
       this.type = type
@@ -594,7 +650,7 @@ async function main() {
   const pageNodes = flatten(pageTree)
   check('config page renders heading and switches',
     pageNodes.some((node) => node.type === 'h3' && node.children?.[0] === 'config.heading')
-    && pageNodes.filter((node) => node.type === 'input' && node.props.type === 'checkbox').length === 3
+    && pageNodes.filter((node) => node.type === 'input' && node.props.type === 'checkbox').length === 4
     && pageNodes.some((node) => node.type === 'textarea'), pageNodes.map((node) => node.type).join(','))
 
   // --- official settings-form projection ---
@@ -742,6 +798,25 @@ async function main() {
   check('drag replays a synthetic HTML5 drop sequence',
     dndTurn.ok === true && dndSource.events.includes('dragstart') && dndTarget.events.includes('dragover') && dndTarget.events.includes('drop') && dndTurn.value.syntheticDrag === true,
     JSON.stringify({ source: dndSource.events, target: dndTarget.events, value: dndTurn.value }).slice(0, 400))
+  const uploadInput = new FakeElement('input', { attrs: { id: 'file-upload', type: 'file' }, rect: { x: 10, y: 760, width: 160, height: 24 }, text: '' })
+  uploadInput.files = []
+  body.append(uploadInput)
+  const uploadTurn = await send({ id: 'u1', action: 'upload', sessionId: 'session-1', tabId: tab.tabId, selector: '#file-upload', files: [{ name: 'a.txt', mediaType: 'text/plain', base64: 'aGk=' }] })
+  check('upload attaches files to a file input', uploadTurn.ok === true && uploadTurn.value.count === 1 && uploadTurn.value.uploadMode === 'file-input' && uploadInput.files.length === 1 && uploadInput.files[0].name === 'a.txt' && uploadInput.events.includes('change'), JSON.stringify({ value: uploadTurn.value, events: uploadInput.events }))
+  const uploadDropTarget = new FakeElement('div', { attrs: { id: 'drop-upload' }, rect: { x: 10, y: 800, width: 160, height: 60 }, text: 'drop' })
+  body.append(uploadDropTarget)
+  const dropUpload = await send({ id: 'u2', action: 'upload', sessionId: 'session-1', tabId: tab.tabId, selector: '#drop-upload', files: [{ name: 'b.json', mediaType: 'application/json', base64: 'e30=' }] })
+  check('upload replays a drop on a drop zone', dropUpload.ok === true && dropUpload.value.uploadMode === 'drop' && uploadDropTarget.events.includes('drop'), JSON.stringify({ value: dropUpload.value, events: uploadDropTarget.events }))
+
+  const saveRequests = []
+  sandbox.dshDesktop.fileActions = {
+    save: async (request) => {
+      saveRequests.push(request)
+      return { status: 'saved', path: '/tmp/downloads/' + (request.name || 'file') }
+    },
+  }
+  const downloadTurn = await send({ id: 'd1', action: 'download', sessionId: 'session-1', tabId: tab.tabId, url: 'data:text/plain;base64,aGk=' })
+  check('download fetches in the page session and saves natively', downloadTurn.ok === true && downloadTurn.value.method === 'guest-fetch' && downloadTurn.value.path === '/tmp/downloads/hi.txt' && saveRequests.length === 1 && saveRequests[0].url.startsWith('data:text/plain') && saveRequests[0].name === 'hi.txt', JSON.stringify({ value: downloadTurn.value, requests: saveRequests }).slice(0, 400))
 
   const waitVisible = await send({ id: 'w1', action: 'waitForSelector', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', state: 'visible' })
   check('waitForSelector visible', waitVisible.ok === true && waitVisible.value.matched === true, JSON.stringify(waitVisible.value).slice(0, 200))

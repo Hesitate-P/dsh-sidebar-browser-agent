@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.5
+
+Native file transfer without Playwright/Puppeteer and without OS file dialogs:
+
+- `download`: resolve a link/image/src or take a direct URL; authenticated and
+  page-generated (`blob:`) files are fetched inside the guest page session
+  (cookies included), then saved through the Desktop trusted
+  `dshDesktop.fileActions.save` API (Downloads folder, de-duplicated names;
+  `saveAs: true` opens the native Save dialog). Public URLs whose page-session
+  fetch is blocked fall back to a native URL download. HTTP errors are refused
+  instead of saving an error page.
+- `upload`: the Host reads absolute local paths (8 MB per file, 12 MB total,
+  MIME guessed from the extension), the guest builds `File` objects with
+  `DataTransfer` and attaches them to `<input type=file>` (visible or hidden),
+  labels, or replays dragenter/dragover/drop on drop zones. No OS dialog.
+- New `allowUploads` config switch (default true) gates local file reads.
+- `status` capabilities now report download/upload support and limits; tool
+  schema, help, renderers, docs and both regression suites cover the new flows.
+- Large-file live checks: 7.5 MB single upload and 2×5 MB upload round-trip with
+  matching SHA-256; 10 MB guest-fetch download with matching SHA-256; 14 MB file
+  over the guest cap falls back to the native URL save with matching SHA-256;
+  9 MB single and 14 MB total uploads are refused with clear errors.
+
 ## 0.3.4
 
 - `drag` accepts a mouse `button` (left, right or middle), matching drag-test
