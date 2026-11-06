@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.10
+
+- README is now just what the plugin does and its limits, with a hero diagram
+  of the tool → native webview flow.
+- The plugin page shows the same diagram as an official-style hero card above
+  the settings form (localized heading/subtitle).
+
 ## 0.2.9
 
 - Polished the official-style plugin page rhythm: field/row spacing, tertiary

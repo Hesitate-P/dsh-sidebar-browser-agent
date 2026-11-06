@@ -1,0 +1,77 @@
+<svg width="960" height="470" viewBox="0 0 960 470" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Agent 通过原生 webview 操作右侧栏浏览器">
+  <defs>
+    <linearGradient id="hero-card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F8F6FF"/><stop offset="1" stop-color="#EEE8FF"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="470" rx="24" fill="url(#hero-card)" stroke="#E9E3F8"/>
+  <text x="56" y="92" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', sans-serif" font-size="32" font-weight="600" fill="#221E40">让 Agent 操作右侧栏里的真实网页</text>
+  <text x="56" y="128" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Noto Sans SC', sans-serif" font-size="17" fill="#6B6688">读取、点击、输入、滚动、执行 JavaScript、截图 —— 全部通过原生 Electron webview，无代理、无 Playwright。</text>
+  <g transform="translate(56 168) scale(1.15)">
+<g>
+  <defs>
+    <linearGradient id="hiw-blue" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#67C7FE"/><stop offset="1" stop-color="#3F77D8"/>
+    </linearGradient>
+    <linearGradient id="hiw-teal" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#6AECB6"/><stop offset="1" stop-color="#37A6B1"/>
+    </linearGradient>
+    <linearGradient id="hiw-arrow" x1="260" y1="84" x2="336" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9AA7FF"/><stop offset="1" stop-color="#5F7BF0"/>
+    </linearGradient>
+    <filter id="hiw-shadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#4a3f8f" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+  <!-- agent tool chips -->
+  <g filter="url(#hiw-shadow)">
+    <rect x="0" y="26" width="250" height="48" rx="13" fill="#FFFFFF" stroke="#E4DFF5"/>
+    <rect x="14" y="38" width="24" height="24" rx="7" fill="url(#hiw-blue)"/>
+    <rect x="20" y="44" width="7" height="7" rx="2" fill="#FFFFFF" fill-opacity="0.95"/>
+    <rect x="29" y="49" width="4" height="4" rx="1" fill="#FFFFFF" fill-opacity="0.55"/>
+    <text x="50" y="56" font-family="SFMono-Regular, Menlo, monospace" font-size="15" fill="#3A3560">sidebar_browser</text>
+    <rect x="14" y="88" width="24" height="24" rx="7" fill="url(#hiw-teal)"/>
+    <rect x="20" y="94" width="9" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.95"/>
+    <rect x="20" y="100" width="6" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.7"/>
+    <rect x="20" y="106" width="7.5" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.45"/>
+  </g>
+  <g filter="url(#hiw-shadow)">
+    <rect x="0" y="88" width="250" height="48" rx="13" fill="#FFFFFF" stroke="#E4DFF5"/>
+    <rect x="14" y="100" width="24" height="24" rx="7" fill="url(#hiw-teal)"/>
+    <rect x="20" y="106" width="9" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.95"/>
+    <rect x="20" y="112" width="6" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.7"/>
+    <rect x="20" y="118" width="7.5" height="3" rx="1.5" fill="#FFFFFF" fill-opacity="0.45"/>
+    <text x="50" y="118" font-family="SFMono-Regular, Menlo, monospace" font-size="15" fill="#3A3560">sidebar_page</text>
+  </g>
+  <!-- arrow -->
+  <path d="M266 82H322" stroke="url(#hiw-arrow)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M318 74L330 82L318 90" stroke="#5F7BF0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <!-- browser window -->
+  <g filter="url(#hiw-shadow)">
+    <rect x="342" y="4" width="374" height="222" rx="18" fill="#FFFFFF" stroke="#E4DFF5"/>
+    <rect x="342" y="4" width="374" height="34" rx="18" fill="#FAF8FF"/>
+    <rect x="342" y="21" width="374" height="17" fill="#FAF8FF"/>
+    <circle cx="360" cy="21" r="4" fill="#D9D4EC"/>
+    <circle cx="372" cy="21" r="4" fill="#D9D4EC"/>
+    <circle cx="384" cy="21" r="4" fill="#D9D4EC"/>
+    <rect x="402" y="13" width="196" height="16" rx="8" fill="#F0EDFA"/>
+    <rect x="414" y="18" width="92" height="6" rx="3" fill="#C9C3E4"/>
+    <!-- sidebar list -->
+    <rect x="354" y="48" width="74" height="166" rx="12" fill="#F6F3FE"/>
+    <rect x="364" y="60" width="54" height="9" rx="4.5" fill="url(#hiw-teal)" fill-opacity="0.9"/>
+    <rect x="364" y="78" width="42" height="9" rx="4.5" fill="#CFC8EC"/>
+    <rect x="364" y="96" width="48" height="9" rx="4.5" fill="#DCD6F1"/>
+    <rect x="364" y="114" width="38" height="9" rx="4.5" fill="#DCD6F1"/>
+    <!-- page -->
+    <rect x="440" y="48" width="264" height="166" rx="12" fill="#FBFAFF" stroke="#EFEBFA"/>
+    <rect x="456" y="64" width="132" height="10" rx="5" fill="#E4DEF6"/>
+    <rect x="456" y="84" width="176" height="10" rx="5" fill="#EDE8F8"/>
+    <rect x="456" y="104" width="112" height="10" rx="5" fill="#EDE8F8"/>
+    <rect x="456" y="128" width="104" height="22" rx="11" fill="#E2F7EE" stroke="#7CDDB4" stroke-opacity="0.7"/>
+    <rect x="468" y="137" width="66" height="6" rx="3" fill="#37A6B1" fill-opacity="0.55"/>
+    <!-- cursor -->
+    <path d="M566 128L566 158L574 150L580 161L588 157L581 146L593 145Z" fill="url(#hiw-blue)" stroke="#FFFFFF" stroke-width="1.6" stroke-linejoin="round"/>
+  </g>
+</g>
+  </g>
+</svg>

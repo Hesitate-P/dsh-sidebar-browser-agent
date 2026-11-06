@@ -538,6 +538,10 @@ async function main() {
   // --- configuration page: locale, slot registration and rendering ---
   const localeEntry = localeRegistrations.find((entry) => entry.ns === 'sidebarBrowserAgent')
   check('config locale registered', localeEntry !== undefined && localeEntry.dicts.en !== undefined && localeEntry.dicts.zh !== undefined, localeRegistrations.map((entry) => entry.ns))
+  check('config locale carries the hero copy',
+    localeEntry.dicts.en['config.heroTitle'] !== undefined && localeEntry.dicts.zh['config.heroTitle'] !== undefined
+    && localeEntry.dicts.en['config.heroSubtitle'] !== undefined && localeEntry.dicts.zh['config.heroSubtitle'] !== undefined,
+    Object.keys(localeEntry.dicts.en).filter((key) => key.startsWith('config.hero')))
   const slotEntry = slotRegistrations.find((entry) => entry.options?.name === 'plugins.row.config')
   check('row config slot registered', slotEntry !== undefined
     && slotEntry.options.key === 'dsh-sidebar-browser-agent#sidebar-browser-agent'
