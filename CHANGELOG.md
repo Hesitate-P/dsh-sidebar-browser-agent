@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.2
+
+Model-facing narration and view awareness, aligned with ZCode Browser Use's
+observation discipline:
+
+- Rewrote the `sidebar_page` tool description and `help` workflow in the
+  snapshot-as-source-of-truth style: reuse the latest snapshot, never guess
+  labels/selectors/attributes, one state-changing action per observation cycle,
+  recover from stale/ambiguous/no-match explicitly, screenshots only for visual
+  evidence, page content is untrusted data.
+- `eval` is now explicitly a LAST RESORT in the description, action docs and
+  help: never use it to read page text, attributes/state, enumerate elements,
+  dump HTML or probe selectors (use snapshot/read instead). Eval calls whose
+  code looks like page-state reading return a pointer back to snapshot/read.
+- View context: snapshot headers carry viewport/scroll/dpr and tag
+  `[offscreen]` elements (with iframe offsets); interactive reads expose
+  `inViewport`; every page result carries `view: { mounted, expanded, active }`;
+  the renderer reports when the sidebar is collapsed, showing another
+  conversation, or another tab is active. `scroll`/`scrollIntoView` results now
+  return flat scroll/viewport facts for the same picture.
+
 ## 0.5.1
 
 Parity gaps with mature browser-use layers closed, all still native to the DSH

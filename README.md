@@ -6,9 +6,10 @@
 
 ## 做什么
 
-- **观察**：`snapshot` 返回紧凑语义树（role/名称/状态 + `e12` 这类 ref），会遍历 **open shadow root 与同源 iframe**（行内标记 `[shadow]`/`[frame]`）；`read` 支持文本、交互元素、HTML，以及按 ref/selector 读取单个元素的文本、属性、状态、包围盒。
+- **观察**：`snapshot` 返回紧凑语义树（role/名称/状态 + `e12` 这类 ref），头部带 viewport/scroll/dpr，会遍历 **open shadow root 与同源 iframe**（`[shadow]`/`[frame]`），并标记 `[offscreen]`；`read` 支持文本、交互元素（含 `inViewport`）、HTML，以及按 ref/selector 读取单个元素的文本、属性、状态、包围盒。每个页面结果都带 `view`（侧栏是否挂载/展开、当前标签是否前台）。
 - **操作**：ref / CSS selector / 可见文本 / 坐标定位；支持 click、dblclick、rightClick、hover、focus、clear、type（填值与真实键盘两种）、press（组合键如 `Meta+A`）、selectOption、check/uncheck、drag（左/中/右键）、scroll、scrollIntoView。
-- **动作后观察**：每个改状态的动作返回 `observed`（URL/标题/滚动变化、DOM 变更计数、新标签、焦点），不用再读一遍整页。
+- **动作后观察**：每个改状态的动作返回 `observed`（URL/标题/滚动变化、DOM 变更计数、新标签、焦点、录到的对话框），不用再读一遍整页。
+- **工具纪律**（对齐 ZCode Browser Use 的叙述方式）：snapshot 是唯一事实来源，复用至失效；每次只做一个状态变更；`eval` 明确是最后手段——禁止用 eval 读页面/枚举元素/探测选择器，读状态用 snapshot/read；截图只在需要视觉证据时使用。
 - **训练有素的等待**：`waitForSelector`（visible/attached/hidden/detached）、`waitForLoadState`、`waitForURL`、`waitForNavigation`；`open/navigate/reload` 可带 `waitUntil`。
 - **批量**：`batch` 在一条命令里顺序执行多步页面动作；**截图**支持 viewport 或 `clip` 区域，并以图片附件返回。
 - **标签生命周期**：`list` 带 title/url/loading/zoom/viewport/mark；`open` 可 `reuse` 同站标签；`show`/`hide` 收起或展开侧栏；`zoom`、`viewport`、`finalize`（deliverable/handoff 标记）。
