@@ -6,12 +6,13 @@
 
 ## 做什么
 
-- **观察**：`snapshot` 返回紧凑语义树（role/名称/状态 + `e12` 这类 ref），`read` 支持文本、交互元素、HTML，以及按 ref/selector 读取单个元素的文本、属性、状态、包围盒。
+- **观察**：`snapshot` 返回紧凑语义树（role/名称/状态 + `e12` 这类 ref），会遍历 **open shadow root 与同源 iframe**（行内标记 `[shadow]`/`[frame]`）；`read` 支持文本、交互元素、HTML，以及按 ref/selector 读取单个元素的文本、属性、状态、包围盒。
 - **操作**：ref / CSS selector / 可见文本 / 坐标定位；支持 click、dblclick、rightClick、hover、focus、clear、type（填值与真实键盘两种）、press（组合键如 `Meta+A`）、selectOption、check/uncheck、drag（左/中/右键）、scroll、scrollIntoView。
 - **动作后观察**：每个改状态的动作返回 `observed`（URL/标题/滚动变化、DOM 变更计数、新标签、焦点），不用再读一遍整页。
 - **训练有素的等待**：`waitForSelector`（visible/attached/hidden/detached）、`waitForLoadState`、`waitForURL`、`waitForNavigation`；`open/navigate/reload` 可带 `waitUntil`。
 - **批量**：`batch` 在一条命令里顺序执行多步页面动作；**截图**支持 viewport 或 `clip` 区域，并以图片附件返回。
 - **标签生命周期**：`list` 带 title/url/loading/zoom/viewport/mark；`open` 可 `reuse` 同站标签；`show`/`hide` 收起或展开侧栏；`zoom`、`viewport`、`finalize`（deliverable/handoff 标记）。
+- **对话框/视口/历史**：JS `alert/confirm/prompt` 被记录且不阻塞（`dialog` 动作读取并设置 dismiss/accept/answer 策略）；`viewport` 可真正调整 guest 视口尺寸做响应式检查并 `reset` 恢复；`back`/`forward` 使用原生历史。
 - **原生下载/上传**：统一的**一次性 token 环回文件桥**。`download` 在页面会话内 fetch（保留登录 Cookie，支持 blob/页面生成文件），把响应流式写入环回 sink，Host 落盘到 Downloads 或显式 `path`；`upload` 由 Host 通过环回 source 直接流给页面，在页面内构造 `File` 并附加到 `<input type=file>` 或拖放区，不弹系统文件选择框（受 `allowUploads` 开关约束）。
 - 全原生：直接调用 Electron `<webview>` 的 `executeJavaScript`、`sendInputEvent`、`capturePage`、`loadURL` —— 不使用 Playwright/Puppeteer、不注入代理、不重写页面。
 

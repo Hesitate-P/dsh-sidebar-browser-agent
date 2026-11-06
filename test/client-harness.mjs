@@ -170,6 +170,7 @@ function queryAll(root, selector) {
 const bridgeMock = { upload: Buffer.from('upload-bridge-bytes'), download: Buffer.from('download-bridge-bytes'), sink: [], done: null }
 
 const guestContext = {
+  window: null,
   document: {
     title: 'Test Page',
     readyState: 'complete',
@@ -340,6 +341,7 @@ const guestContext = {
   Array,
   Promise,
 }
+guestContext.window = guestContext
 const guestVm = vm.createContext(guestContext)
 
 /** Execute a guest script in the fake DOM context and await async results. */
@@ -369,6 +371,15 @@ const webview = {
   reloadCalls: 0,
   zoomFactor: 1,
   captureCalls: [],
+  style: {},
+  backCalls: 0,
+  forwardCalls: 0,
+  canBack: false,
+  canForward: false,
+  canGoBack() { return this.canBack === true },
+  canGoForward() { return this.canForward === true },
+  goBack() { this.backCalls += 1 },
+  goForward() { this.forwardCalls += 1 },
   async executeJavaScript(sourceText) {
     return await guestEval(sourceText)
   },
@@ -904,6 +915,43 @@ async function main() {
   check('open reuses a same-site tab', reused.ok === true && reused.value.reused === true && reused.value.tabId === tab.tabId, JSON.stringify(reused.value))
   const statusCaps = await send({ id: 'st2', action: 'status', sessionId: 'session-1' })
   check('status reports capabilities', statusCaps.ok === true && statusCaps.value.capabilities !== undefined && statusCaps.value.capabilities.snapshot === true, JSON.stringify(statusCaps.value).slice(0, 300))
+
+  // --- back/forward, viewport resize, fullPage, dialog and shadow/iframe snapshot ---
+  webview.canBack = true
+  webview.canForward = true
+  const backTurn = await send({ id: 'nx1', action: 'back', sessionId: 'session-1', tabId: tab.tabId })
+  check('back uses native history', backTurn.ok === true && webview.backCalls === 1 && backTurn.value.canGoBack === true, JSON.stringify(backTurn.value))
+  const forwardTurn = await send({ id: 'nx2', action: 'forward', sessionId: 'session-1', tabId: tab.tabId })
+  check('forward uses native history', forwardTurn.ok === true && webview.forwardCalls === 1, JSON.stringify(forwardTurn.value))
+
+  const baseWidth = webview.style.width ?? ''
+  const resized = await send({ id: 'vp1', action: 'viewport', sessionId: 'session-1', tabId: tab.tabId, width: 500, height: 700 })
+  check('viewport resizes the native guest element', resized.ok === true && webview.style.width === '500px' && webview.style.height === '700px' && resized.value.applied.width === 500, JSON.stringify({ value: resized.value, style: webview.style }))
+  const resetViewport = await send({ id: 'vp2', action: 'viewport', sessionId: 'session-1', tabId: tab.tabId, reset: true })
+  check('viewport reset restores layout', resetViewport.ok === true && (webview.style.width ?? '') === baseWidth && resetViewport.value.applied === 'reset', JSON.stringify({ value: resetViewport.value, style: webview.style }))
+
+  const fullShot = await send({ id: 'fp1', action: 'screenshot', sessionId: 'session-1', tabId: tab.tabId, fullPage: true })
+  check('fullPage screenshot marks itself', fullShot.ok === true && fullShot.value.fullPage === true && typeof fullShot.value.base64 === 'string', JSON.stringify({ ...fullShot.value, base64: '…' }).slice(0, 240))
+
+  const policy = await send({ id: 'dg1', action: 'dialog', sessionId: 'session-1', tabId: tab.tabId, policy: 'accept' })
+  check('dialog policy configures answers', policy.ok === true && policy.value.policy === 'accept', JSON.stringify(policy.value))
+  const confirmed = await send({ id: 'dg2', action: 'eval', sessionId: 'session-1', tabId: tab.tabId, code: 'window.confirm("sure?")' })
+  const dialogRead = await send({ id: 'dg3', action: 'dialog', sessionId: 'session-1', tabId: tab.tabId })
+  check('dialogs are recorded without blocking', confirmed.ok === true && confirmed.value.result === 'true' && dialogRead.value.dialogs.some((entry) => entry.kind === 'confirm' && entry.message === 'sure?'), JSON.stringify({ confirmed: confirmed.value, dialogs: dialogRead.value.dialogs }))
+
+  const shadowButton = new FakeElement('button', { attrs: { 'aria-label': 'Inside shadow' }, rect: { x: 10, y: 840, width: 90, height: 24 }, text: 'shadow' })
+  const shadowHost = new FakeElement('div', { attrs: { id: 'shadow-host' }, rect: { x: 10, y: 840, width: 200, height: 60 }, text: '' })
+  shadowHost.shadowRoot = { children: [shadowButton] }
+  const frameButton = new FakeElement('button', { attrs: { 'aria-label': 'Inside frame' }, rect: { x: 10, y: 880, width: 90, height: 24 }, text: 'frame' })
+  const frame = new FakeElement('iframe', { attrs: { id: 'inner-frame', src: '/inner.html' }, rect: { x: 10, y: 880, width: 300, height: 120 }, text: '' })
+  frame.contentDocument = { body: { children: [frameButton] } }
+  body.append(shadowHost)
+  body.append(frame)
+  const deepSnap = await send({ id: 'ds1', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, maxElements: 100 })
+  check('snapshot walks shadow roots and same-origin iframes',
+    deepSnap.ok === true && deepSnap.value.text.includes('[shadow]') && deepSnap.value.text.includes('[frame]')
+    && deepSnap.value.text.includes('Inside shadow') && deepSnap.value.text.includes('Inside frame'),
+    deepSnap.value.text.slice(0, 1200))
 
   // --- timeout helpers and hung-page resilience ---
   const timeoutError = await moduleExports.__test.withTimeout(new Promise(() => {}), 80, 'Probe')

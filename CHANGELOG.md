@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.5.1
+
+Parity gaps with mature browser-use layers closed, all still native to the DSH
+Electron guest:
+
+- Snapshot now walks open shadow roots and same-origin iframe bodies, tagging
+  those lines `[shadow]` / `[frame]`; refs resolve with correct cumulative frame
+  coordinates so native clicks inside a same-origin iframe land on target.
+- `back` / `forward` tab actions use native `webview` history, accept
+  `waitUntil`, and report `canGoBack` / `canGoForward`.
+- `screenshot` gains `fullPage`: the guest element is temporarily resized to the
+  measured scroll height (capped at 20000 px), captured natively, restored, and
+  auto-downscaled under the attachment cap. Resize handlers may observe the
+  temporary viewport change; the original layout is restored before return.
+- `viewport` can set `width`/`height` (320-3840 / 320-2160) for responsive
+  checks and `reset` to restore; original inline styles are remembered on the
+  guest element so the reset survives page reloads of the plugin client.
+- JS dialogs: `alert`/`confirm`/`prompt`/`print` are wrapped in the page, never
+  block, are surfaced in `observed.dialogs`, and `dialog` reads them and sets
+  the answer policy (`dismiss`|`accept`|`answer`, prompt text).
+- Client/host suites and live-guest verification cover all five additions
+  (iframe/shadow clicks, fullPage 1196x2390 capture, 500x700 resize + reset,
+  confirm/prompt policies, back/forward on a local site).
+
 ## 0.4.0
 
 Unified one-shot-token loopback file bridge replaces the previous download/upload

@@ -340,6 +340,22 @@ function fakePage(command) {
         ok: true,
         value: { action: 'eval', ...base, url: 'https://example.com/', title: 'Example Domain', result: '{"answer":42}', truncated: false },
       }
+    case 'back':
+    case 'forward':
+      return {
+        ok: true,
+        value: { action: command.action, ...base, url: 'https://example.com/previous', canGoBack: command.action === 'forward', canGoForward: command.action === 'back' },
+      }
+    case 'viewport':
+      return {
+        ok: true,
+        value: { action: 'viewport', ...base, viewport: { width: command.width ?? 723, height: command.height ?? 843 }, frame: { width: 1024, height: 768 }, ...(command.reset === true ? { applied: 'reset' } : command.width === undefined ? {} : { applied: { width: command.width, height: command.height } }) },
+      }
+    case 'dialog':
+      return {
+        ok: true,
+        value: { action: 'dialog', ...base, policy: command.policy ?? 'dismiss', dialogs: [], count: 0 },
+      }
     case 'download':
       return {
         ok: true,
@@ -564,8 +580,15 @@ async function main() {
   check('click requires target', typeof missingClickTarget === 'string' && missingClickTarget.includes('needs a "ref"'), missingClickTarget)
   const invalidRef = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'click', ref: 'nope' }))
   check('invalid ref rejected', typeof invalidRef === 'string' && invalidRef.includes('"ref" must look like'), invalidRef)
-  const fullPage = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'screenshot', fullPage: true }))
-  check('fullPage screenshot refused', typeof fullPage === 'string' && fullPage.includes('fullPage'), fullPage)
+  const fullPageTurn = pageTurn(harness, fakePage)
+  await sleep(10)
+  const fullPageShot = await runTool(harness, 'sidebar_page', { action: 'screenshot', fullPage: true })
+  const fullPagePoll = await fullPageTurn
+  check('fullPage screenshot forwarded', fullPagePoll.json.commands[0]?.fullPage === true && fullPageShot.image !== undefined && fullPageShot.width === 1024, JSON.stringify(fullPageShot).slice(0, 200))
+  const badDialogPolicy = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'dialog', policy: 'maybe' }))
+  check('dialog policy validated', typeof badDialogPolicy === 'string' && badDialogPolicy.includes('dialog "policy"'), badDialogPolicy)
+  const badViewport = await expectThrow(() => runTool(harness, 'sidebar_browser', { action: 'viewport', tabId: 'tab-1', width: 500 }))
+  check('viewport resize needs both dimensions', typeof badViewport === 'string' && badViewport.includes('both "width" and "height"'), badViewport)
   const badDragButton = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'drag', ref: 'e1', toRef: 'e2', button: 'scroll' }))
   check('drag button validated', typeof badDragButton === 'string' && badDragButton.includes('"button" must be'), badDragButton)
   const badZoom = await expectThrow(() => runTool(harness, 'sidebar_browser', { action: 'zoom', tabId: 'tab-1', zoomFactor: 9 }))
