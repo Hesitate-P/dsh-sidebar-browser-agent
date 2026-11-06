@@ -574,6 +574,20 @@ async function main() {
     && pageNodes.filter((node) => node.type === 'input' && node.props.type === 'checkbox').length === 3
     && pageNodes.some((node) => node.type === 'textarea'), pageNodes.map((node) => node.type).join(','))
 
+  // --- official settings-form projection ---
+  check('official form flag is reported', testHook.usesOfficialForm === false, testHook.usesOfficialForm)
+  const readyModel = testHook.settingsFormState({ status: 'ready', writable: true, value: {} }, true, false, false)
+  check('settings form state projects a dirty editable form',
+    readyModel.available === true && readyModel.writable === true && readyModel.dirty === true
+    && readyModel.invalid === false && readyModel.saving === false && readyModel.failed === false, JSON.stringify(readyModel))
+  const cleanModel = testHook.settingsFormState({ status: 'ready', writable: true, value: {} }, false, true, true)
+  check('settings form state projects saving and failure',
+    cleanModel.dirty === false && cleanModel.saving === true && cleanModel.failed === true, JSON.stringify(cleanModel))
+  const readOnlyModel = testHook.settingsFormState({ status: 'ready', writable: false, value: {} }, false, false, false)
+  check('settings form state projects read-only', readOnlyModel.writable === false && readOnlyModel.available === true, JSON.stringify(readOnlyModel))
+  const unavailableModel = testHook.settingsFormState({ status: 'loading' }, false, false, false)
+  check('settings form state projects unavailable', unavailableModel.available === false && unavailableModel.dirty === false && unavailableModel.writable === false, JSON.stringify(unavailableModel))
+
   // --- tab management ---
   const open = await send({ id: 'o1', action: 'open', sessionId: 'session-1', url: 'https://example.test/new' })
   check('open result', open.ok === true && open.value.tabId === 'tab-2' && open.value.url === 'https://example.test/new', open.value)

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.8
+
+- The plugin page now follows the official plugin-page style: the configuration
+  form is built on the platform's shared settings primitives (`SettingsForm`,
+  `Switch`), with the official footer save action, token-based typography and
+  spacing, and a switch list plus allowlist field. A carrier without those
+  primitives keeps the previous self-contained form as a fallback, and
+  `sidebar_browser status` reports which path is active.
+
 ## 0.2.7
 
 - Redrew the plugin icon in the official plugin style: a transparent 36x36
