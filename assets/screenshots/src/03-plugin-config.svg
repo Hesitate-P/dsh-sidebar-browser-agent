@@ -186,9 +186,9 @@
     <circle cx="1148" cy="932" r="4" fill="#22C55E"/>
     <text x="1160" y="936" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11" fill="#6B7280">已同步配置</text>
     <rect x="1352" y="914" width="84" height="30" rx="9" fill="#FFFFFF" stroke="#E3E6EC"/>
-    <text x="1375" y="934" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#4B5563">放弃</text>
+    <text x="1394" y="934" text-anchor="middle" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#4B5563">放弃</text>
     <rect x="1444" y="914" width="84" height="30" rx="9" fill="#3D5AFE"/>
-    <text x="1466" y="934" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">保存</text>
+    <text x="1486" y="934" text-anchor="middle" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">保存</text>
     <text x="488" y="944" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#C0C7D2">示意界面，非真实截图</text>
   </g>
 </svg>

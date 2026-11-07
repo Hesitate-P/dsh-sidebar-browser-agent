@@ -162,8 +162,10 @@
     <rect x="1084" y="148" width="452" height="440" rx="14" fill="#FFFFFF" stroke="#E7EAF0" filter="url(#card)"/>
     <rect x="1084" y="148" width="452" height="34" rx="14" fill="#F3F5F9"/><rect x="1084" y="168" width="452" height="14" fill="#F3F5F9"/>
     <g stroke="#6B7280" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M1106 165l-4 4 4 4"/><path d="M1122 165l4 4-4 4"/>
-      <path d="M1140 164a6 6 0 1 0 5 3M1145 161v5h-5"/>
+      <path d="M1108 161l-5 5 5 5"/>
+      <path d="M1122 161l5 5-5 5"/>
+      <path d="M1152 163a5.3 5.3 0 1 0 1.2 5.1"/>
+      <path d="M1152 159v4.2h-4.2"/>
     </g>
     <rect x="1158" y="157" width="352" height="18" rx="9" fill="#FFFFFF" stroke="#E3E6EC"/>
     <rect x="1172" y="162" width="8" height="8" rx="2" fill="#22C55E"/>
