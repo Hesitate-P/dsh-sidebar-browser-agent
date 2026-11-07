@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.5.3
+
+Documentation and storefront release; no runtime behaviour changed.
+
+- Add `screenshots.json` with three storefront images: the README hero and two
+  synthetic DSH-style illustrations (agent/sidebar workflow and plugin
+  configuration). They contain no real conversation, account or page content;
+  SVG sources live in `assets/screenshots/src/`.
+- Iterate the illustration layout: widen the HARNESS badge, pixel-centre the user
+  avatar, align toolbar/ref badges/content edges, move the config list scrollbar
+  out of the cards, and align footer actions and toggle edges.
+- Rewrite the README in a plainer voice, fix stale limitations (`fullPage` and
+  recorded JS dialogs are implemented), and keep the install command, feature
+  set and constraints unchanged.
+
 ## 0.5.2
 
 Model-facing narration and view awareness, aligned with ZCode Browser Use's
