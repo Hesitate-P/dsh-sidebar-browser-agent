@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.5
+
+- Replace unreliable CSP-violation detection with an actionable
+  `[fetch-failed] ... (a site CSP or CORS rule may block the loopback file
+  bridge)` hint. Uploads on strict-CSP sites still cannot use the bridge;
+  downloads keep the native-URL fallback where an unresolved source fetch
+  permits it.
+
 ## 0.5.4
 
 Correctness and cleanup release.
