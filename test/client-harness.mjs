@@ -940,8 +940,11 @@ async function main() {
   check('dialogs are recorded without blocking', confirmed.ok === true && confirmed.value.result === 'true' && dialogRead.value.dialogs.some((entry) => entry.kind === 'confirm' && entry.message === 'sure?'), JSON.stringify({ confirmed: confirmed.value, dialogs: dialogRead.value.dialogs }))
 
   const shadowButton = new FakeElement('button', { attrs: { 'aria-label': 'Inside shadow' }, rect: { x: 10, y: 840, width: 90, height: 24 }, text: 'shadow' })
-  const shadowHost = new FakeElement('div', { attrs: { id: 'shadow-host' }, rect: { x: 10, y: 840, width: 200, height: 60 }, text: '' })
-  shadowHost.shadowRoot = { children: [shadowButton] }
+  const shadowInput = new FakeInputElement('input', { attrs: { id: 'shadow-q', type: 'text', 'aria-label': 'Shadow field' }, rect: { x: 10, y: 800, width: 180, height: 24 } })
+  const shadowHost = new FakeElement('div', { attrs: { id: 'shadow-host' }, rect: { x: 10, y: 800, width: 200, height: 100 }, text: '' })
+  shadowHost.shadowRoot = { children: [shadowButton, shadowInput] }
+  shadowButton.getRootNode = () => ({ host: shadowHost })
+  shadowInput.getRootNode = () => ({ host: shadowHost })
   const frameButton = new FakeElement('button', { attrs: { 'aria-label': 'Inside frame' }, rect: { x: 10, y: 880, width: 90, height: 24 }, text: 'frame' })
   const frame = new FakeElement('iframe', { attrs: { id: 'inner-frame', src: '/inner.html' }, rect: { x: 10, y: 880, width: 300, height: 120 }, text: '' })
   frame.contentDocument = { body: { children: [frameButton] } }
@@ -952,6 +955,15 @@ async function main() {
     deepSnap.ok === true && deepSnap.value.text.includes('[shadow]') && deepSnap.value.text.includes('[frame]')
     && deepSnap.value.text.includes('Inside shadow') && deepSnap.value.text.includes('Inside frame'),
     deepSnap.value.text.slice(0, 1200))
+  const shadowInputRef = /- \[(e\d+)\] textbox "Shadow field"[^\n]*\[shadow\]/.exec(deepSnap.value.text)?.[1]
+  const shadowRead = shadowInputRef === undefined
+    ? { ok: false, error: 'no shadow ref' }
+    : await send({ id: 'ds2', action: 'read', sessionId: 'session-1', tabId: tab.tabId, ref: shadowInputRef, mode: 'state' })
+  check('shadow refs work for element reads', shadowRead.ok === true && shadowRead.value.target?.ref === shadowInputRef, JSON.stringify(shadowRead).slice(0, 300))
+  const shadowType = shadowInputRef === undefined
+    ? { ok: false, error: 'no shadow ref' }
+    : await send({ id: 'ds3', action: 'type', sessionId: 'session-1', tabId: tab.tabId, ref: shadowInputRef, text: 'typed', clear: true })
+  check('shadow refs work for fill typing', shadowType.ok === true && shadowInput.value === 'typed', JSON.stringify({ shadowType, value: shadowInput.value }).slice(0, 300))
 
   // --- timeout helpers and hung-page resilience ---
   const timeoutError = await moduleExports.__test.withTimeout(new Promise(() => {}), 80, 'Probe')
@@ -994,6 +1006,8 @@ async function main() {
     && backgroundRead.value.note.includes('not visible right now'), backgroundRead.value?.note)
   const backgroundOpen = await send({ id: 'b2', action: 'open', sessionId: 'session-1', url: 'https://example.test/x' })
   check('background open refuses', backgroundOpen.ok === false && backgroundOpen.error.includes('showing conversation session-2'), backgroundOpen.error)
+  const backgroundShot = await send({ id: 'b3', action: 'screenshot', sessionId: 'session-1', tabId: tab.tabId })
+  check('background screenshots refuse', backgroundShot.ok === false && backgroundShot.error.includes('[offscreen]'), backgroundShot.error)
   sidebar.setMounted('session-1')
 
   // --- session mismatch on page actions is refused ---

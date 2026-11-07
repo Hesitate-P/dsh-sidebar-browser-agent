@@ -318,6 +318,7 @@ function fakePage(command) {
           width: 1024,
           height: 768,
           mediaType: 'image/png',
+          ...(command.fullPage === true ? { fullPage: true } : {}),
           base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
         },
       }
@@ -573,6 +574,23 @@ async function main() {
     typeof sinkUrl === 'string' && sinkUrl.includes('token=') && download.method === 'file-bridge' && download.path === '/tmp/example/file.txt',
     JSON.stringify({ download, sinkUrl }))
 
+  const emptyDir = fs.mkdtempSync(path.join(tmpdir(), 'dsh-host-empty-'))
+  const emptyPath = path.join(emptyDir, 'empty.txt')
+  const emptyTurn = pageTurn(harness, fakePage)
+  await sleep(10)
+  const emptyDownload = await runTool(harness, 'sidebar_page', { action: 'download', url: 'data:text/plain;base64,', path: emptyPath })
+  const emptyPoll = await emptyTurn
+  const emptySink = emptyPoll.json.commands[0]?.sink?.url
+  const emptyDone = typeof emptySink === 'string'
+    ? await fetch(`${emptySink}&done=1`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filename: 'empty.txt' }) })
+    : undefined
+  await sleep(50)
+  check('zero-byte download finalizes atomically',
+    emptyDownload.method === 'file-bridge' && emptyDone?.status === 200
+    && fs.existsSync(emptyPath) && fs.statSync(emptyPath).size === 0,
+    JSON.stringify({ status: emptyDone?.status, exists: fs.existsSync(emptyPath), size: fs.existsSync(emptyPath) ? fs.statSync(emptyPath).size : null }))
+  fs.rmSync(emptyDir, { recursive: true, force: true })
+
   // --- argument validation before the bridge ---
   const missingText = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'type' }))
   check('type requires text', typeof missingText === 'string' && missingText.startsWith('type requires "text"'), missingText)
@@ -584,7 +602,7 @@ async function main() {
   await sleep(10)
   const fullPageShot = await runTool(harness, 'sidebar_page', { action: 'screenshot', fullPage: true })
   const fullPagePoll = await fullPageTurn
-  check('fullPage screenshot forwarded', fullPagePoll.json.commands[0]?.fullPage === true && fullPageShot.image !== undefined && fullPageShot.width === 1024, JSON.stringify(fullPageShot).slice(0, 200))
+  check('fullPage screenshot forwarded', fullPagePoll.json.commands[0]?.fullPage === true && fullPageShot.fullPage === true && fullPageShot.image !== undefined && fullPageShot.width === 1024, JSON.stringify(fullPageShot).slice(0, 200))
   const badDialogPolicy = await expectThrow(() => runTool(harness, 'sidebar_page', { action: 'dialog', policy: 'maybe' }))
   check('dialog policy validated', typeof badDialogPolicy === 'string' && badDialogPolicy.includes('dialog "policy"'), badDialogPolicy)
   const badViewport = await expectThrow(() => runTool(harness, 'sidebar_browser', { action: 'viewport', tabId: 'tab-1', width: 500 }))

@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.4
+
+Correctness and cleanup release.
+
+- Give file transfers a 220 s guest budget, a 240 s Host result budget, and a
+  330 s batch result budget; raise the tool timeout, make batch stop at 300 s,
+  and widen the client lease so a long single-flight command is not mistaken
+  for a disconnect.
+- Harden the loopback file bridge: materialise empty sink files (zero-byte
+  downloads now work), refresh token activity per chunk, remove temp files on
+  expiry/failure, and link/copy with exclusive creation so concurrent downloads
+  cannot overwrite each other.
+- Resolve refs inside open shadow roots and same-origin iframes for element
+  actions (read/type/focus/clear/select/check/upload/download), not just
+  coordinate clicks.
+- Preserve screenshot `fullPage`/`clip`/`view`/truncation fields through the
+  Host; reject hidden-session screenshots; make full-page size respect zoom and
+  report the 20000 px cap.
+- Restore dialog policy after navigation and keep policies per tab; classify
+  CSP-blocked file fetches and sink failures separately from source-fetch
+  failures, with actionable errors.
+- Remove dead guest click resolver and unused Host target set; remove duplicated
+  viewport state, unused typing options and a duplicate style key; fix stale
+  action docs and zoom/download renderers; batch now also rejects
+  upload/download client-side.
+
 ## 0.5.3
 
 Documentation and storefront release; no runtime behaviour changed.
