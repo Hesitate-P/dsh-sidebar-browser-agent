@@ -66,13 +66,13 @@
       <text x="60" y="478" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12" font-weight="600" fill="#8A93A6">最近会话</text>
       <g font-family="-apple-system,'PingFang SC',sans-serif" font-size="12.5" fill="#3B4252">
         <rect x="60" y="492" width="260" height="32" rx="8" fill="#FFFFFF"/>
-        <circle cx="74" cy="508" r="4" fill="#C7D2FE"/><text x="86" y="513">页面表单填写</text><text x="286" y="513" text-anchor="end" font-size="10" fill="#A0A8B8">2 小时</text>
+        <circle cx="74" cy="508" r="4" fill="#C7D2FE"/><text x="86" y="513">页面表单填写</text><text x="306" y="513" text-anchor="end" font-size="10" fill="#A0A8B8">2 小时</text>
         <rect x="60" y="530" width="260" height="32" rx="8" fill="#FFFFFF"/>
-        <circle cx="74" cy="546" r="4" fill="#C7D2FE"/><text x="86" y="551">下载报表并核对</text><text x="286" y="551" text-anchor="end" font-size="10" fill="#A0A8B8">昨天</text>
+        <circle cx="74" cy="546" r="4" fill="#C7D2FE"/><text x="86" y="551">下载报表并核对</text><text x="306" y="551" text-anchor="end" font-size="10" fill="#A0A8B8">昨天</text>
         <rect x="60" y="568" width="260" height="32" rx="8" fill="#FFFFFF"/>
-        <circle cx="74" cy="584" r="4" fill="#C7D2FE"/><text x="86" y="589">截图与响应式检查</text><text x="286" y="589" text-anchor="end" font-size="10" fill="#A0A8B8">2 天</text>
+        <circle cx="74" cy="584" r="4" fill="#C7D2FE"/><text x="86" y="589">截图与响应式检查</text><text x="306" y="589" text-anchor="end" font-size="10" fill="#A0A8B8">2 天</text>
         <rect x="60" y="606" width="260" height="32" rx="8" fill="#E9EDF9"/>
-        <circle cx="74" cy="622" r="4" fill="#3D5AFE"/><text x="86" y="627" fill="#2B4BE0" font-weight="600">侧栏浏览器 Agent 演示</text><text x="286" y="627" text-anchor="end" font-size="10" fill="#7C87A0">刚刚</text>
+        <circle cx="74" cy="622" r="4" fill="#3D5AFE"/><text x="86" y="627" fill="#2B4BE0" font-weight="600">侧栏浏览器 Agent 演示</text><text x="306" y="627" text-anchor="end" font-size="10" fill="#7C87A0">刚刚</text>
       </g>
       <rect x="60" y="886" width="260" height="46" rx="10" fill="#E9EDF3"/>
       <circle cx="80" cy="909" r="10" fill="#C7D2FE"/>
@@ -91,9 +91,9 @@
     <rect x="500" y="102" width="94" height="22" rx="11" fill="#F2F4F8"/>
     <text x="514" y="117" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#6B7280">10 个后台任务</text>
     <g stroke="#9AA3B2" stroke-width="1.4" fill="none" stroke-linecap="round">
-      <path d="M980 108v8M984 112h-8"/>
-      <rect x="1002" y="104" width="13" height="13" rx="3"/>
-      <circle cx="1024" cy="112" r="1.4" fill="#9AA3B2"/><circle cx="1032" cy="112" r="1.4" fill="#9AA3B2"/><circle cx="1040" cy="112" r="1.4" fill="#9AA3B2"/>
+      <path d="M952 108v8M956 112h-8"/>
+      <rect x="974" y="104" width="13" height="13" rx="3"/>
+      <circle cx="996" cy="112" r="1.4" fill="#9AA3B2"/><circle cx="1004" cy="112" r="1.4" fill="#9AA3B2"/><circle cx="1012" cy="112" r="1.4" fill="#9AA3B2"/>
     </g>
     <text x="374" y="156" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" font-weight="600" fill="#2B4BE0">对话</text>
     <rect x="374" y="166" width="28" height="3" rx="1.5" fill="#3D5AFE"/>
@@ -106,24 +106,24 @@
     <text x="618" y="254" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">并告诉我页面标题。</text>
 
     <!-- tool card 1 -->
-    <rect x="372" y="308" width="560" height="104" rx="14" fill="#FFFFFF" stroke="#E7EAF0" filter="url(#card)"/>
+    <rect x="372" y="308" width="654" height="104" rx="14" fill="#FFFFFF" stroke="#E7EAF0" filter="url(#card)"/>
     <rect x="388" y="324" width="28" height="28" rx="8" fill="#E8F0FF"/>
     <path d="M396 331h11v5l3 2v6h-14z" fill="#3D5AFE" opacity="0.9"/>
     <text x="428" y="343" font-family="'SF Mono',Menlo,monospace" font-size="12" font-weight="700" fill="#3D5AFE">sidebar_browser</text>
     <rect x="552" y="328" width="44" height="21" rx="6" fill="#F2F4F8"/>
     <text x="562" y="343" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="10.5" fill="#4B5563">open</text>
-    <text x="912" y="343" text-anchor="end" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#12A66A">完成 · 1.2s</text>
+    <text x="1006" y="343" text-anchor="end" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#12A66A">完成 · 1.2s</text>
     <text x="388" y="371" font-family="'SF Mono',Menlo,monospace" font-size="11" fill="#94A3B8">{&quot;url&quot;: <tspan fill="#3D5AFE">&quot;https://example.com&quot;</tspan>}</text>
     <text x="388" y="393" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#3B4252">已打开新标签 tab-1，等待加载完成。</text>
 
     <!-- tool card 2 -->
-    <rect x="372" y="430" width="560" height="176" rx="14" fill="#FBFCFE" stroke="#E7EAF0"/>
+    <rect x="372" y="430" width="654" height="176" rx="14" fill="#FBFCFE" stroke="#E7EAF0"/>
     <rect x="388" y="446" width="28" height="28" rx="8" fill="#E9F8F0"/>
     <path d="M396 452h10v10h-10zM397 455v5h8" stroke="#12A66A" stroke-width="1.7" fill="none" stroke-linejoin="round"/>
     <text x="428" y="465" font-family="'SF Mono',Menlo,monospace" font-size="12" font-weight="700" fill="#12A66A">sidebar_page</text>
     <rect x="540" y="450" width="64" height="21" rx="6" fill="#F2F4F8"/>
     <text x="550" y="465" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="10.5" fill="#4B5563">snapshot</text>
-    <text x="912" y="465" text-anchor="end" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#12A66A">完成 · 86ms</text>
+    <text x="1006" y="465" text-anchor="end" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#12A66A">完成 · 86ms</text>
     <g font-family="'SF Mono',Menlo,monospace" font-size="11" fill="#475569">
       <text x="388" y="500" fill="#94A3B8"># snapshot gen=1</text>
       <text x="388" y="522" fill="#94A3B8">viewport=</text><text x="452" y="522" fill="#3D5AFE">1440x900</text>
@@ -135,7 +135,7 @@
     </g>
 
     <!-- assistant -->
-    <rect x="372" y="640" width="500" height="70" rx="14" fill="#F7F8FA"/>
+    <rect x="372" y="640" width="654" height="70" rx="14" fill="#F7F8FA"/>
     <text x="390" y="668" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">页面标题是 <tspan font-weight="700">“Example Domain”</tspan>。当前视口</text>
     <text x="390" y="690" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">1440×900，三个目标元素都在首屏，无需滚动。</text>
 
