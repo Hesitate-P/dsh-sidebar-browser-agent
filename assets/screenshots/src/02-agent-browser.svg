@@ -1,166 +1,245 @@
 <svg width="1600" height="1000" viewBox="0 0 1600 1000" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#F5F6FA"/><stop offset="1" stop-color="#E9ECF5"/>
-    </linearGradient>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#5B7BFF"/><stop offset="1" stop-color="#3D5AFE"/>
-    </linearGradient>
-    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#F8F6FF"/><stop offset="1" stop-color="#ECE6FF"/>
-    </linearGradient>
-    <filter id="win" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#1B2559" flood-opacity="0.14"/>
-    </filter>
-    <filter id="card" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#1B2559" flood-opacity="0.07"/>
-    </filter>
-    <clipPath id="windowClip"><rect x="40" y="40" width="1520" height="920" rx="20"/></clipPath>
-    <clipPath id="pageClip"><rect x="1108" y="208" width="424" height="700" rx="10"/></clipPath>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F3F5FA"/><stop offset="1" stop-color="#E7EBF6"/></linearGradient>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6D8BFF"/><stop offset="1" stop-color="#3D5AFE"/></linearGradient>
+    <linearGradient id="hero" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F9F7FF"/><stop offset="1" stop-color="#EAE4FF"/></linearGradient>
+    <linearGradient id="pagebg" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFFFFF"/><stop offset="1" stop-color="#F7F9FE"/></linearGradient>
+    <filter id="win" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="22" stdDeviation="30" flood-color="#1B2559" flood-opacity="0.16"/></filter>
+    <filter id="card" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="10" flood-color="#1B2559" flood-opacity="0.06"/></filter>
+    <clipPath id="winClip"><rect x="40" y="40" width="1520" height="920" rx="20"/></clipPath>
+    <clipPath id="sideClip"><rect x="40" y="40" width="300" height="920" rx="20"/></clipPath>
+    <clipPath id="browserClip"><rect x="1084" y="196" width="452" height="388" rx="0"/></clipPath>
+    <pattern id="dotgrid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#DDE3F0" opacity="0.5"/></pattern>
   </defs>
 
   <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1600" height="1000" fill="url(#dotgrid)" opacity="0.7"/>
   <rect x="40" y="40" width="1520" height="920" rx="20" fill="#FFFFFF" filter="url(#win)"/>
-  <g clip-path="url(#windowClip)">
-    <!-- sidebar -->
-    <rect x="40" y="40" width="300" height="920" fill="#F3F4F7"/>
-    <rect x="339" y="40" width="1" height="920" fill="#E5E7EB"/>
-    <circle cx="76" cy="82" r="14" fill="url(#accent)"/>
-    <path d="M69 82c4-8 10-8 14 0-4 2-6 2-7 6-3 0-5-2-7-6z" fill="#FFFFFF"/>
-    <text x="100" y="88" font-family="-apple-system,'SF Pro Text','PingFang SC',sans-serif" font-size="18" font-weight="700" fill="#1F2329">deepseek</text>
-    <rect x="188" y="72" width="66" height="20" rx="5" fill="#1F2329"/>
-    <text x="199" y="86.5" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="11" font-weight="700" fill="#FFFFFF" letter-spacing="1">HARNESS</text>
 
-    <rect x="60" y="118" width="260" height="44" rx="12" fill="#FFFFFF" stroke="#E3E6EC"/>
-    <circle cx="82" cy="140" r="7" stroke="#5B6B8C" stroke-width="1.6"/>
-    <path d="M87 145l5 5" stroke="#5B6B8C" stroke-width="1.6" stroke-linecap="round"/>
-    <text x="100" y="146" font-family="-apple-system,'PingFang SC',sans-serif" font-size="14" font-weight="600" fill="#1F2329">新会话</text>
+  <g clip-path="url(#winClip)">
+    <!-- ============ left sidebar ============ -->
+    <g clip-path="url(#sideClip)">
+      <rect x="40" y="40" width="300" height="920" fill="#F3F4F7"/>
+      <rect x="339" y="40" width="1" height="920" fill="#E5E7EB"/>
+      <circle cx="76" cy="82" r="15" fill="url(#brand)"/>
+      <path d="M68.5 82c4.2-8.5 10.8-8.5 15 0-4.2 2.2-6.3 2.2-7.4 6.4-3.3 0-5.4-2.2-7.6-6.4z" fill="#FFFFFF"/>
+      <text x="100" y="88" font-family="-apple-system,'SF Pro Text','PingFang SC',sans-serif" font-size="18" font-weight="700" fill="#1F2329">deepseek</text>
+      <rect x="188" y="71" width="74" height="20" rx="5" fill="#1F2329"/>
+      <text x="199" y="85.5" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="10" font-weight="700" fill="#FFFFFF" letter-spacing="0.8">HARNESS</text>
+      <g stroke="#8A93A6" stroke-width="1.5" stroke-linecap="round">
+        <path d="M310 78h10M310 82h10M310 86h6"/>
+      </g>
 
-    <g font-family="-apple-system,'PingFang SC',sans-serif" font-size="14" fill="#3B4252">
-      <rect x="60" y="178" width="260" height="34" rx="8" fill="#E8ECF9"/>
-      <rect x="76" y="186" width="15" height="15" rx="3" stroke="#3D5AFE" stroke-width="1.5" fill="none"/>
-      <text x="102" y="200" fill="#2B4BE0" font-weight="600">插件</text>
-      <circle cx="84" cy="232" r="8" stroke="#5B6475" stroke-width="1.5" fill="none"/>
-      <path d="M84 226v7l4 3" stroke="#5B6475" stroke-width="1.5" stroke-linecap="round"/>
-      <text x="102" y="237">自动化任务</text>
-      <circle cx="79" cy="268" r="2.4" fill="#5B6475"/><circle cx="84" cy="268" r="2.4" fill="#5B6475"/><circle cx="89" cy="268" r="2.4" fill="#5B6475"/>
-      <text x="102" y="273">更多</text>
+      <rect x="60" y="118" width="260" height="44" rx="12" fill="#FFFFFF" stroke="#E3E6EC"/>
+      <circle cx="82" cy="140" r="7" stroke="#5B6B8C" stroke-width="1.6" fill="none"/>
+      <path d="M87 145l5 5" stroke="#5B6B8C" stroke-width="1.6" stroke-linecap="round"/>
+      <text x="100" y="146" font-family="-apple-system,'PingFang SC',sans-serif" font-size="14" font-weight="600" fill="#1F2329">新会话</text>
+      <rect x="272" y="129" width="34" height="22" rx="6" fill="#F1F3F7"/>
+      <text x="280" y="144" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="10.5" fill="#8A93A6">⌘K</text>
+
+      <g font-family="-apple-system,'PingFang SC',sans-serif" font-size="14" fill="#3B4252">
+        <rect x="60" y="178" width="260" height="34" rx="8" fill="#E8ECF9"/>
+        <rect x="76" y="186" width="15" height="15" rx="3" stroke="#3D5AFE" stroke-width="1.5" fill="none"/>
+        <text x="102" y="200" fill="#2B4BE0" font-weight="600">插件</text>
+        <circle cx="84" cy="232" r="8" stroke="#5B6475" stroke-width="1.5" fill="none"/>
+        <path d="M84 226v7l4 3" stroke="#5B6475" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="102" y="237">自动化任务</text>
+        <circle cx="79" cy="268" r="2.4" fill="#5B6475"/><circle cx="84" cy="268" r="2.4" fill="#5B6475"/><circle cx="89" cy="268" r="2.4" fill="#5B6475"/>
+        <text x="102" y="273">更多</text>
+      </g>
+
+      <text x="60" y="318" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12" font-weight="600" fill="#8A93A6">工作区</text>
+      <circle cx="246" cy="313" r="9" fill="#FFFFFF" stroke="#E3E6EC"/><path d="M243 310l3 3 3-3" stroke="#6B7280" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <circle cx="268" cy="313" r="9" fill="#FFFFFF" stroke="#E3E6EC"/><path d="M268 309v8M264 313h8" stroke="#6B7280" stroke-width="1.4" stroke-linecap="round"/>
+      <g font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#3B4252">
+        <rect x="60" y="326" width="260" height="36" rx="9" fill="#FFFFFF"/>
+        <rect x="76" y="336" width="14" height="16" rx="3" fill="#E8ECF9" stroke="#AAB4D6"/>
+        <text x="102" y="349">项目资料</text>
+        <rect x="60" y="368" width="260" height="36" rx="9" fill="#FFFFFF"/>
+        <rect x="76" y="378" width="14" height="16" rx="3" fill="#E8F7EF" stroke="#8CCBA8"/>
+        <text x="102" y="391">默认工作区</text>
+        <rect x="60" y="410" width="260" height="36" rx="9" fill="#E9EDF9"/>
+        <rect x="76" y="420" width="14" height="16" rx="3" fill="#DCE4FF" stroke="#7E97FF"/>
+        <text x="102" y="433" fill="#2B4BE0" font-weight="600">侧栏浏览器 Agent</text>
+      </g>
+
+      <text x="60" y="478" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12" font-weight="600" fill="#8A93A6">最近会话</text>
+      <g font-family="-apple-system,'PingFang SC',sans-serif" font-size="12.5" fill="#3B4252">
+        <rect x="60" y="492" width="260" height="32" rx="8" fill="#FFFFFF"/>
+        <circle cx="74" cy="508" r="4" fill="#C7D2FE"/><text x="86" y="513">页面表单填写</text><text x="286" y="513" text-anchor="end" font-size="10" fill="#A0A8B8">2 小时</text>
+        <rect x="60" y="530" width="260" height="32" rx="8" fill="#FFFFFF"/>
+        <circle cx="74" cy="546" r="4" fill="#C7D2FE"/><text x="86" y="551">下载报表并核对</text><text x="286" y="551" text-anchor="end" font-size="10" fill="#A0A8B8">昨天</text>
+        <rect x="60" y="568" width="260" height="32" rx="8" fill="#FFFFFF"/>
+        <circle cx="74" cy="584" r="4" fill="#C7D2FE"/><text x="86" y="589">截图与响应式检查</text><text x="286" y="589" text-anchor="end" font-size="10" fill="#A0A8B8">2 天</text>
+        <rect x="60" y="606" width="260" height="32" rx="8" fill="#E9EDF9"/>
+        <circle cx="74" cy="622" r="4" fill="#3D5AFE"/><text x="86" y="627" fill="#2B4BE0" font-weight="600">侧栏浏览器 Agent 演示</text><text x="286" y="627" text-anchor="end" font-size="10" fill="#7C87A0">刚刚</text>
+      </g>
+      <rect x="60" y="886" width="260" height="46" rx="10" fill="#E9EDF3"/>
+      <circle cx="80" cy="909" r="10" fill="#C7D2FE"/>
+      <text x="84" y="913" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="9" font-weight="700" fill="#3D5AFE">U</text>
+      <text x="100" y="906" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11" font-weight="600" fill="#1F2329">demo workspace</text>
+      <text x="100" y="922" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="9.5" fill="#8A93A6">user@example.com</text>
     </g>
 
-    <text x="60" y="318" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12" font-weight="600" fill="#8A93A6">工作区</text>
-    <circle cx="254" cy="313" r="9" fill="#FFFFFF" stroke="#E3E6EC"/>
-    <g stroke="#6B7280" stroke-width="1.4" stroke-linecap="round">
-      <path d="M251 310l3 3 3-3"/><circle cx="254" cy="313" r="4"/>
-      <path d="M300 310v6M297 313h6" stroke-width="1.6"/>
-    </g>
-    <g font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#3B4252">
-      <rect x="60" y="326" width="260" height="36" rx="9" fill="#FFFFFF"/>
-      <rect x="76" y="336" width="14" height="16" rx="3" fill="#E8ECF9" stroke="#AAB4D6"/>
-      <text x="102" y="349">项目资料</text>
-      <rect x="60" y="368" width="260" height="36" rx="9" fill="#FFFFFF"/>
-      <rect x="76" y="378" width="14" height="16" rx="3" fill="#E8F7EF" stroke="#8CCBA8"/>
-      <text x="102" y="391">默认工作区</text>
-      <rect x="60" y="410" width="260" height="36" rx="9" fill="#E9EDF9"/>
-      <rect x="76" y="420" width="14" height="16" rx="3" fill="#DCE4FF" stroke="#7E97FF"/>
-      <text x="102" y="433" fill="#2B4BE0" font-weight="600">侧栏浏览器 Agent</text>
-    </g>
-    <circle cx="76" cy="912" r="9" fill="#C7D2FE"/>
-    <text x="94" y="917" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12" fill="#6B7280">workspace · demo</text>
-
-    <!-- main conversation -->
+    <!-- ============ conversation ============ -->
     <rect x="340" y="40" width="720" height="920" fill="#FFFFFF"/>
-    <text x="372" y="88" font-family="-apple-system,'PingFang SC',sans-serif" font-size="15" font-weight="650" fill="#1F2329">侧栏浏览器 Agent 演示</text>
-    <rect x="372" y="104" width="58" height="24" rx="12" fill="#F2F4F8"/>
-    <text x="386" y="120" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#6B7280">智能体</text>
-    <rect x="440" y="104" width="66" height="24" rx="12" fill="#F2F4F8"/>
-    <text x="455" y="120" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#6B7280">创建模式</text>
-    <text x="374" y="158" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" font-weight="600" fill="#2B4BE0">对话</text>
-    <rect x="374" y="168" width="28" height="3" rx="1.5" fill="#3D5AFE"/>
-    <text x="430" y="158" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#8A93A6">轨迹</text>
-    <rect x="340" y="176" width="720" height="1" fill="#EEF0F4"/>
+    <text x="372" y="86" font-family="-apple-system,'PingFang SC',sans-serif" font-size="15.5" font-weight="650" fill="#1F2329">侧栏浏览器 Agent 演示</text>
+    <rect x="372" y="102" width="52" height="22" rx="11" fill="#F2F4F8"/>
+    <text x="386" y="117" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#6B7280">智能体</text>
+    <rect x="430" y="102" width="62" height="22" rx="11" fill="#F2F4F8"/>
+    <text x="444" y="117" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#6B7280">创建模式</text>
+    <rect x="500" y="102" width="94" height="22" rx="11" fill="#F2F4F8"/>
+    <text x="514" y="117" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#6B7280">10 个后台任务</text>
+    <g stroke="#9AA3B2" stroke-width="1.4" fill="none" stroke-linecap="round">
+      <path d="M980 108v8M984 112h-8"/>
+      <rect x="1002" y="104" width="13" height="13" rx="3"/>
+      <circle cx="1024" cy="112" r="1.4" fill="#9AA3B2"/><circle cx="1032" cy="112" r="1.4" fill="#9AA3B2"/><circle cx="1040" cy="112" r="1.4" fill="#9AA3B2"/>
+    </g>
+    <text x="374" y="156" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" font-weight="600" fill="#2B4BE0">对话</text>
+    <rect x="374" y="166" width="28" height="3" rx="1.5" fill="#3D5AFE"/>
+    <text x="430" y="156" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#8A93A6">轨迹</text>
+    <rect x="340" y="174" width="720" height="1" fill="#EEF0F4"/>
 
-    <!-- user bubble -->
-    <rect x="596" y="210" width="430" height="78" rx="14" fill="#EDF1FF"/>
-    <text x="618" y="240" font-family="-apple-system,'PingFang SC',sans-serif" font-size="14" fill="#1F2329">打开右侧栏浏览器，进入 example.com，</text>
-    <text x="618" y="264" font-family="-apple-system,'PingFang SC',sans-serif" font-size="14" fill="#1F2329">并告诉我页面标题。</text>
+    <!-- user message -->
+    <rect x="596" y="204" width="430" height="72" rx="14" fill="#EDF1FF"/>
+    <text x="618" y="232" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">打开右侧栏浏览器，进入 example.com，</text>
+    <text x="618" y="254" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">并告诉我页面标题。</text>
 
     <!-- tool card 1 -->
-    <rect x="372" y="318" width="560" height="96" rx="14" fill="#FFFFFF" stroke="#E7EAF0" filter="url(#card)"/>
-    <rect x="388" y="334" width="26" height="26" rx="8" fill="#E8F0FF"/>
-    <path d="M396 341h10v4l3 2v6h-13z" fill="#3D5AFE" opacity="0.9"/>
-    <text x="426" y="351" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="12.5" font-weight="700" fill="#3D5AFE">sidebar_browser</text>
-    <rect x="526" y="337" width="42" height="20" rx="6" fill="#F2F4F8"/>
-    <text x="536" y="351" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="11" fill="#4B5563">open</text>
-    <text x="388" y="382" font-family="'SF Mono',Menlo,monospace" font-size="11.5" fill="#6B7280">url: "https://example.com"</text>
-    <text x="388" y="401" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#3B4252">已打开新标签 tab-1，等待加载完成。</text>
+    <rect x="372" y="308" width="560" height="104" rx="14" fill="#FFFFFF" stroke="#E7EAF0" filter="url(#card)"/>
+    <rect x="388" y="324" width="28" height="28" rx="8" fill="#E8F0FF"/>
+    <path d="M396 331h11v5l3 2v6h-14z" fill="#3D5AFE" opacity="0.9"/>
+    <text x="428" y="343" font-family="'SF Mono',Menlo,monospace" font-size="12" font-weight="700" fill="#3D5AFE">sidebar_browser</text>
+    <rect x="552" y="328" width="44" height="21" rx="6" fill="#F2F4F8"/>
+    <text x="562" y="343" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="10.5" fill="#4B5563">open</text>
+    <text x="912" y="343" text-anchor="end" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#12A66A">完成 · 1.2s</text>
+    <text x="388" y="371" font-family="'SF Mono',Menlo,monospace" font-size="11" fill="#94A3B8">{&quot;url&quot;: <tspan fill="#3D5AFE">&quot;https://example.com&quot;</tspan>}</text>
+    <text x="388" y="393" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#3B4252">已打开新标签 tab-1，等待加载完成。</text>
 
     <!-- tool card 2 -->
-    <rect x="372" y="430" width="560" height="150" rx="14" fill="#FBFCFE" stroke="#E7EAF0"/>
-    <rect x="388" y="446" width="26" height="26" rx="8" fill="#E9F8F0"/>
-    <path d="M397 452h9v9h-9zM398 454v5h7" stroke="#12A66A" stroke-width="1.6" fill="none"/>
-    <text x="426" y="463" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="12.5" font-weight="700" fill="#12A66A">sidebar_page</text>
-    <rect x="524" y="449" width="58" height="20" rx="6" fill="#F2F4F8"/>
-    <text x="534" y="463" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="11" fill="#4B5563">snapshot</text>
-    <g font-family="'SF Mono',Menlo,monospace" font-size="11.5" fill="#475569">
-      <text x="388" y="496">viewport=1440x900 scroll=0/1240 dpr=2</text>
-      <text x="388" y="516">- [e1] heading "Example Domain"</text>
-      <text x="388" y="536">- [e2] paragraph "This domain is for use..."</text>
-      <text x="388" y="556">- [e3] link "More information" href="https://iana.org"</text>
+    <rect x="372" y="430" width="560" height="176" rx="14" fill="#FBFCFE" stroke="#E7EAF0"/>
+    <rect x="388" y="446" width="28" height="28" rx="8" fill="#E9F8F0"/>
+    <path d="M396 452h10v10h-10zM397 455v5h8" stroke="#12A66A" stroke-width="1.7" fill="none" stroke-linejoin="round"/>
+    <text x="428" y="465" font-family="'SF Mono',Menlo,monospace" font-size="12" font-weight="700" fill="#12A66A">sidebar_page</text>
+    <rect x="540" y="450" width="64" height="21" rx="6" fill="#F2F4F8"/>
+    <text x="550" y="465" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="10.5" fill="#4B5563">snapshot</text>
+    <text x="912" y="465" text-anchor="end" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#12A66A">完成 · 86ms</text>
+    <g font-family="'SF Mono',Menlo,monospace" font-size="11" fill="#475569">
+      <text x="388" y="500" fill="#94A3B8"># snapshot gen=1</text>
+      <text x="388" y="522" fill="#94A3B8">viewport=</text><text x="452" y="522" fill="#3D5AFE">1440x900</text>
+      <text x="524" y="522" fill="#94A3B8">scroll=</text><text x="572" y="522" fill="#3D5AFE">0/1240</text>
+      <text x="628" y="522" fill="#94A3B8">dpr=</text><text x="660" y="522" fill="#3D5AFE">2</text>
+      <text x="388" y="546" fill="#475569">- [<tspan fill="#7C3AED">e1</tspan>] heading &quot;Example Domain&quot;</text>
+      <text x="388" y="568" fill="#475569">- [<tspan fill="#7C3AED">e2</tspan>] paragraph &quot;This domain is for use...&quot;</text>
+      <text x="388" y="590" fill="#475569">- [<tspan fill="#7C3AED">e3</tspan>] link &quot;More information&quot; href=&quot;https://iana.org&quot;</text>
     </g>
 
-    <!-- assistant reply -->
-    <rect x="372" y="612" width="470" height="64" rx="14" fill="#F7F8FA"/>
-    <text x="390" y="638" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">页面标题是 “Example Domain”。当前视口 1440×900，</text>
-    <text x="390" y="660" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">所有目标元素都在首屏，无需滚动。</text>
+    <!-- assistant -->
+    <rect x="372" y="640" width="500" height="70" rx="14" fill="#F7F8FA"/>
+    <text x="390" y="668" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">页面标题是 <tspan font-weight="700">“Example Domain”</tspan>。当前视口</text>
+    <text x="390" y="690" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" fill="#1F2329">1440×900，三个目标元素都在首屏，无需滚动。</text>
 
-    <!-- right sidebar browser -->
-    <rect x="1060" y="40" width="500" height="920" fill="#F8F9FB"/>
+    <!-- ============ right sidebar browser ============ -->
+    <rect x="1060" y="40" width="500" height="920" fill="#F7F8FB"/>
     <rect x="1060" y="40" width="1" height="920" fill="#E5E7EB"/>
-    <text x="1084" y="82" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" font-weight="650" fill="#1F2329">侧栏浏览器</text>
-    <text x="1480" y="82" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="11.5" fill="#8A93A6">原生 webview</text>
-    <rect x="1084" y="100" width="452" height="300" rx="14" fill="#FFFFFF" stroke="#E7EAF0" filter="url(#card)"/>
-    <rect x="1084" y="100" width="452" height="38" rx="14" fill="#F3F5F9"/>
-    <rect x="1084" y="124" width="452" height="14" fill="#F3F5F9"/>
-    <circle cx="1104" cy="119" r="4" fill="#FF6058"/><circle cx="1118" cy="119" r="4" fill="#FFBD2E"/><circle cx="1132" cy="119" r="4" fill="#28C840"/>
-    <rect x="1170" y="110" width="330" height="18" rx="9" fill="#FFFFFF" stroke="#E3E6EC"/>
-    <text x="1182" y="123" font-family="'SF Mono',Menlo,monospace" font-size="10.5" fill="#6B7280">https://example.com</text>
-    <text x="1112" y="174" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="22" font-weight="700" fill="#111827">Example Domain</text>
-    <text x="1112" y="204" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="12" fill="#4B5563">This domain is for use in illustrative examples.</text>
-    <rect x="1112" y="224" width="96" height="28" rx="7" fill="#EDF1FF"/>
-    <text x="1128" y="243" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="11.5" fill="#3D5AFE">More information</text>
-    <rect x="1112" y="270" width="396" height="104" rx="8" fill="#F8FAFC" stroke="#EEF1F5"/>
-    <text x="1128" y="294" font-family="'SF Mono',Menlo,monospace" font-size="10.5" fill="#94A3B8">/* 页面内容仅为示意，不含真实数据 */</text>
-    <text x="1128" y="316" font-family="'SF Mono',Menlo,monospace" font-size="10.5" fill="#CBD5E1">This page is served over the native sidebar browser.</text>
-    <text x="1128" y="338" font-family="'SF Mono',Menlo,monospace" font-size="10.5" fill="#CBD5E1">Agent reads it through snapshot + refs.</text>
-
-    <rect x="1084" y="428" width="452" height="180" rx="14" fill="#FFFFFF" stroke="#E7EAF0"/>
-    <text x="1104" y="456" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12.5" font-weight="650" fill="#1F2329">操作与观察</text>
-    <g font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#4B5563">
-      <circle cx="1106" cy="482" r="3" fill="#5B7BFF"/><text x="1118" y="486">snapshot：语义树 + e12 ref</text>
-      <circle cx="1106" cy="506" r="3" fill="#5B7BFF"/><text x="1118" y="510">click / type / press：原生输入</text>
-      <circle cx="1106" cy="530" r="3" fill="#5B7BFF"/><text x="1118" y="534">observed：变更、焦点、对话框</text>
-      <circle cx="1106" cy="554" r="3" fill="#5B7BFF"/><text x="1118" y="558">view：侧栏可见性 + viewport</text>
-      <circle cx="1106" cy="578" r="3" fill="#5B7BFF"/><text x="1118" y="582">shadow / iframe / fullPage / 上传下载</text>
+    <text x="1084" y="80" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13.5" font-weight="650" fill="#1F2329">侧栏浏览器</text>
+    <g stroke="#8A93A6" stroke-width="1.4" fill="none" stroke-linecap="round">
+      <path d="M1490 80h12M1496 74v12" stroke-width="1.6"/>
+      <rect x="1516" y="74" width="12" height="12" rx="2"/>
+      <path d="M1520 80h4"/>
     </g>
-    <rect x="1084" y="628" width="452" height="280" rx="14" fill="url(#hero)" stroke="#E4DDFB"/>
-    <text x="1106" y="662" font-family="-apple-system,'PingFang SC',sans-serif" font-size="13" font-weight="650" fill="#3F3D8F">原生 Electron webview</text>
-    <text x="1106" y="688" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#6B63A8">无 Playwright、无代理、无注入</text>
-    <rect x="1106" y="712" width="150" height="44" rx="10" fill="#FFFFFF" stroke="#E3E6EC"/>
-    <circle cx="1128" cy="734" r="8" fill="#5B7BFF" opacity="0.18"/><circle cx="1128" cy="734" r="4" fill="#3D5AFE"/>
-    <text x="1148" y="739" font-family="'SF Mono',Menlo,monospace" font-size="11" fill="#3B4252">sidebar_browser</text>
-    <rect x="1268" y="712" width="120" height="44" rx="10" fill="#FFFFFF" stroke="#E3E6EC"/>
-    <circle cx="1288" cy="734" r="8" fill="#12A66A" opacity="0.18"/><circle cx="1288" cy="734" r="4" fill="#12A66A"/>
-    <text x="1306" y="739" font-family="'SF Mono',Menlo,monospace" font-size="11" fill="#3B4252">sidebar_page</text>
-    <path d="M1230 734h30" stroke="#7E97FF" stroke-width="2" stroke-linecap="round"/><path d="M1254 728l7 6-7 6" stroke="#7E97FF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    <rect x="1400" y="690" width="112" height="86" rx="12" fill="#FFFFFF" stroke="#E3E6EC"/>
-    <rect x="1412" y="704" width="88" height="10" rx="5" fill="#DCE4FF"/>
-    <rect x="1412" y="722" width="60" height="8" rx="4" fill="#EEF1F7"/>
-    <rect x="1412" y="738" width="76" height="8" rx="4" fill="#EEF1F7"/>
-    <rect x="1412" y="754" width="44" height="8" rx="4" fill="#EEF1F7"/>
 
-    <!-- footer status -->
-    <rect x="1060" y="908" width="500" height="52" fill="#F1F3F7"/>
-    <circle cx="1088" cy="934" r="4" fill="#22C55E"/>
-    <text x="1100" y="938" font-family="-apple-system,'PingFang SC',sans-serif" font-size="11.5" fill="#6B7280">bridge connected · 插件 0.5.2 · 示意图（非真实会话）</text>
+    <!-- browser tab strip -->
+    <rect x="1084" y="100" width="452" height="36" rx="10" fill="#E9EDF4"/>
+    <rect x="1084" y="100" width="452" height="10" rx="5" fill="#E9EDF4"/>
+    <rect x="1092" y="104" width="152" height="30" rx="8" fill="#FFFFFF"/>
+    <circle cx="1108" cy="119" r="6" fill="#DBE6FF"/><path d="M1105 119h6M1108 116v6" stroke="#3D5AFE" stroke-width="1.2" stroke-linecap="round"/>
+    <text x="1120" y="123" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#1F2329">Example Domain</text>
+    <path d="M1232 115l4 4-4 4" stroke="#8A93A6" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+    <circle cx="1516" cy="119" r="9" fill="#FFFFFF"/><path d="M1516 115v8M1512 119h8" stroke="#6B7280" stroke-width="1.3" stroke-linecap="round"/>
+
+    <!-- browser card -->
+    <rect x="1084" y="148" width="452" height="440" rx="14" fill="#FFFFFF" stroke="#E7EAF0" filter="url(#card)"/>
+    <rect x="1084" y="148" width="452" height="34" rx="14" fill="#F3F5F9"/><rect x="1084" y="168" width="452" height="14" fill="#F3F5F9"/>
+    <g stroke="#6B7280" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1106 165l-4 4 4 4"/><path d="M1122 165l4 4-4 4"/>
+      <path d="M1140 164a6 6 0 1 0 5 3M1145 161v5h-5"/>
+    </g>
+    <rect x="1158" y="157" width="352" height="18" rx="9" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <rect x="1172" y="162" width="8" height="8" rx="2" fill="#22C55E"/>
+    <text x="1184" y="170" font-family="'SF Mono',Menlo,monospace" font-size="10" fill="#6B7280">https://example.com</text>
+
+    <g clip-path="url(#browserClip)">
+      <rect x="1084" y="196" width="452" height="388" fill="url(#pagebg)"/>
+      <!-- ref overlays -->
+      <rect x="1104" y="226" width="244" height="44" rx="8" stroke="#7C3AED" stroke-width="1.4" stroke-dasharray="5 4" fill="#7C3AED" fill-opacity="0.04"/>
+      <rect x="1352" y="222" width="30" height="18" rx="5" fill="#7C3AED"/>
+      <text x="1360" y="235" font-family="'SF Mono',Menlo,monospace" font-size="10" font-weight="700" fill="#FFFFFF">e1</text>
+      <text x="1114" y="260" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="24" font-weight="700" fill="#111827">Example Domain</text>
+
+      <rect x="1104" y="292" width="330" height="58" rx="8" stroke="#7C3AED" stroke-width="1.2" stroke-dasharray="4 4" fill="#7C3AED" fill-opacity="0.03"/>
+      <rect x="1438" y="288" width="30" height="18" rx="5" fill="#7C3AED" opacity="0.9"/>
+      <text x="1446" y="301" font-family="'SF Mono',Menlo,monospace" font-size="10" font-weight="700" fill="#FFFFFF">e2</text>
+      <text x="1118" y="318" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="12" fill="#4B5563">This domain is for use in illustrative examples.</text>
+      <text x="1118" y="336" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="12" fill="#4B5563">You may use this domain freely.</text>
+
+      <rect x="1104" y="372" width="120" height="34" rx="8" stroke="#7C3AED" stroke-width="1.2" stroke-dasharray="4 4" fill="#7C3AED" fill-opacity="0.03"/>
+      <rect x="1228" y="368" width="30" height="18" rx="5" fill="#7C3AED" opacity="0.9"/>
+      <text x="1236" y="381" font-family="'SF Mono',Menlo,monospace" font-size="9.5" font-weight="700" fill="#FFFFFF">e3</text>
+      <rect x="1116" y="380" width="94" height="20" rx="5" fill="#EDF1FF"/>
+      <text x="1128" y="394" font-family="-apple-system,'SF Pro Text',sans-serif" font-size="11" fill="#3D5AFE">More information</text>
+
+      <rect x="1104" y="432" width="404" height="88" rx="8" fill="#F8FAFC" stroke="#EEF1F5"/>
+      <text x="1118" y="456" font-family="'SF Mono',Menlo,monospace" font-size="10" fill="#94A3B8">页面结构由 snapshot 读取，元素坐标</text>
+      <text x="1118" y="474" font-family="'SF Mono',Menlo,monospace" font-size="10" fill="#94A3B8">来自 ref；点击使用原生鼠标事件。</text>
+      <text x="1118" y="496" font-family="'SF Mono',Menlo,monospace" font-size="10" fill="#C3CCDA">示意页面，不含真实数据。</text>
+      <line x1="1104" y1="532" x2="1508" y2="532" stroke="#EEF1F6"/>
+      <text x="1104" y="556" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10" fill="#B6BECB">页面底部 · snapshot 已覆盖可交互元素</text>
+
+      <!-- scrollbar -->
+      <rect x="1520" y="204" width="4" height="120" rx="2" fill="#DDE3EC"/>
+    </g>
+    <rect x="1084" y="148" width="452" height="440" rx="14" fill="none" stroke="#E7EAF0"/>
+
+    <!-- snapshot facts card -->
+    <rect x="1084" y="606" width="452" height="126" rx="14" fill="#FFFFFF" stroke="#E7EAF0"/>
+    <text x="1104" y="634" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12.5" font-weight="650" fill="#1F2329">本次观察（snapshot）</text>
+    <g font-family="'SF Mono',Menlo,monospace" font-size="10.5" fill="#6B7280">
+      <text x="1104" y="654">gen=1</text><text x="1160" y="654">refs=3</text><text x="1226" y="654">nodes=24</text><text x="1296" y="654">dpr=2</text>
+      <text x="1104" y="674">viewport=1440×900</text><text x="1250" y="674">scroll=0/1240</text>
+      <text x="1104" y="694">view: sidebar mounted · tab active</text>
+    </g>
+    <rect x="1104" y="706" width="88" height="18" rx="6" fill="#EEF2FF"/>
+    <text x="1114" y="719" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#3D5AFE">refs 可用</text>
+    <rect x="1200" y="706" width="96" height="18" rx="6" fill="#E9F8F0"/>
+    <text x="1210" y="719" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#12A66A">shadow / iframe</text>
+    <rect x="1304" y="706" width="88" height="18" rx="6" fill="#FFF4E6"/>
+    <text x="1314" y="719" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#B45309">fullPage</text>
+    <rect x="1400" y="706" width="80" height="18" rx="6" fill="#F3F4F6"/>
+    <text x="1410" y="719" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#6B7280">upload</text>
+
+    <!-- action capabilities -->
+    <rect x="1084" y="752" width="452" height="150" rx="14" fill="url(#hero)" stroke="#E4DDFB"/>
+    <text x="1104" y="782" font-family="-apple-system,'PingFang SC',sans-serif" font-size="12.5" font-weight="650" fill="#3F3D8F">原生 Electron webview · 无 Playwright</text>
+    <text x="1104" y="804" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#6B63A8">观察、输入、截图、文件传输都在真实页面里完成</text>
+    <rect x="1104" y="822" width="136" height="26" rx="7" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <circle cx="1120" cy="835" r="5" fill="#3D5AFE"/><text x="1132" y="839" font-family="'SF Mono',Menlo,monospace" font-size="9.5" fill="#3B4252">native input</text>
+    <rect x="1248" y="822" width="120" height="26" rx="7" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <circle cx="1264" cy="835" r="5" fill="#12A66A"/><text x="1276" y="839" font-family="'SF Mono',Menlo,monospace" font-size="9.5" fill="#3B4252">observed</text>
+    <rect x="1376" y="822" width="120" height="26" rx="7" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <circle cx="1392" cy="835" r="5" fill="#7C3AED"/><text x="1404" y="839" font-family="'SF Mono',Menlo,monospace" font-size="9.5" fill="#3B4252">file bridge</text>
+    <rect x="1104" y="856" width="98" height="24" rx="7" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <text x="1116" y="872" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#6B63A8">shadow DOM</text>
+    <rect x="1210" y="856" width="74" height="24" rx="7" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <text x="1222" y="872" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#6B63A8">iframe</text>
+    <rect x="1292" y="856" width="86" height="24" rx="7" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <text x="1304" y="872" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#6B63A8">fullPage</text>
+    <rect x="1386" y="856" width="74" height="24" rx="7" fill="#FFFFFF" stroke="#E3E6EC"/>
+    <text x="1398" y="872" font-family="-apple-system,'PingFang SC',sans-serif" font-size="9.5" fill="#6B63A8">dialog</text>
+
+    <!-- footer -->
+    <rect x="1060" y="916" width="500" height="44" fill="#F1F3F7"/>
+    <circle cx="1084" cy="938" r="4" fill="#22C55E"/>
+    <text x="1096" y="942" font-family="-apple-system,'PingFang SC',sans-serif" font-size="10.5" fill="#6B7280">bridge connected · v0.5.2 · 示意图（非真实会话）</text>
   </g>
 </svg>
