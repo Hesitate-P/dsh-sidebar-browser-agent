@@ -832,6 +832,12 @@ async function main() {
   body.append(fakeCheckbox)
   const checked = await send({ id: 's15', action: 'check', sessionId: 'session-1', tabId: tab.tabId, selector: '#agree' })
   check('check toggles a checkbox', checked.ok === true && checked.value.checked === true, JSON.stringify(checked.value).slice(0, 200))
+  const fakeRadio = new FakeElement('input', { attrs: { id: 'radio', type: 'radio' }, rect: { x: 10, y: 660, width: 20, height: 20 }, text: '' })
+  fakeRadio.checked = true
+  fakeRadio.click = function click() { /* a selected radio cannot be unchecked by clicking */ }
+  body.append(fakeRadio)
+  const radioUncheck = await send({ id: 's15b', action: 'uncheck', sessionId: 'session-1', tabId: tab.tabId, selector: '#radio' })
+  check('uncheck refuses a selected radio', radioUncheck.ok === false && String(radioUncheck.error).includes('cannot be unchecked'), JSON.stringify(radioUncheck).slice(0, 300))
   const cleared = await send({ id: 's16', action: 'clear', sessionId: 'session-1', tabId: tab.tabId, selector: '#q' })
   check('clear empties a field', cleared.ok === true && guest.activeElement === input && input.value === '', JSON.stringify(cleared.value).slice(0, 200))
   const focused = await send({ id: 's17', action: 'focus', sessionId: 'session-1', tabId: tab.tabId, selector: '#q' })

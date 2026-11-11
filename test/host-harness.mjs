@@ -8,6 +8,7 @@
  *  - screenshot attachment conversion and its rendered image block;
  *  - version consistency between package.json, both halves, and diagnostics.
  */
+import { randomUUID } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -381,6 +382,58 @@ async function expectThrow(run) {
   }
 }
 
+/** Extract the private Bridge and its small dependencies without adding production exports. */
+function bridgeForTest(hostSource) {
+  const declaration = (kind, name) => {
+    const match = hostSource.match(new RegExp(`^${kind} ${name}\\b[\\s\\S]*?^}`, 'm'))
+    if (match === null) throw new Error(`missing ${kind} ${name}`)
+    return match[0]
+  }
+  const source = [
+    'const RESULT_TIMEOUT_MS = 30_000; const POLL_HOLD_MS = 15_000;',
+    declaration('function', 'writeJson'),
+    declaration('function', 'abortError'),
+    declaration('class', 'PollWaiter'),
+    declaration('class', 'Bridge'),
+    'return Bridge',
+  ].join('\n')
+  return new Function('randomUUID', source)(randomUUID)
+}
+
+async function checkQueuedCleanup(hostSource) {
+  const Bridge = bridgeForTest(hostSource)
+  for (const mode of ['timeout', 'abort']) {
+    const bridge = new Bridge(makeHarness().ctx)
+    // Isolate dispatch's queued path after the client-presence check succeeds.
+    bridge.ensureClient = async () => {}
+    const controller = new AbortController()
+    const reason = new Error('caller cancelled queued command')
+    try {
+      const failed = bridge.dispatch({ action: 'click', sessionId: 'session-1' }, controller.signal, mode === 'timeout' ? 10 : 1_000)
+        .then(() => undefined, (error) => error)
+      const surviving = bridge.dispatch({ action: 'read', sessionId: 'session-1' }, undefined, 1_000)
+      await Promise.resolve()
+      check(`queued ${mode} starts with two queued commands`, bridge.queue.length === 2 && bridge.pending.size === 2)
+      if (mode === 'abort') controller.abort(reason)
+      const error = await failed
+      check(`queued ${mode} rejects the caller`, mode === 'timeout'
+        ? error instanceof Error && error.message.includes('did not answer within')
+        : error?.name === 'AbortError' && error.cause === reason, error?.message)
+      check(`queued ${mode} cleans up only the failed command`, bridge.queue.length === 1 && bridge.pending.size === 1)
+
+      const res = makeRes()
+      bridge.handlePoll(makeReq('GET', '/poll?clientId=late-page&session=session-1'), res)
+      await res.finished
+      const commands = JSON.parse(res.body).commands
+      check(`queued ${mode} is not delivered by a later poll`, commands.length === 1 && commands[0].action === 'read', commands)
+      bridge.dispose()
+      await surviving
+    } finally {
+      bridge.dispose()
+    }
+  }
+}
+
 async function main() {
   // --- Config contract: a native Schemastery schema whose fields are volatile ---
   check('config is native schemastery', Config[Symbol.for('schemastery')] === true && typeof Config.type === 'string' && typeof Config.meta === 'object')
@@ -416,6 +469,9 @@ async function main() {
   check('versioned entry exists', fs.existsSync(entryFile), entryFile)
   check('versioned entry matches the host source', fs.existsSync(entryFile) && fs.readFileSync(entryFile, 'utf8') === hostSource)
   check('versioned entry reports the current version', fs.existsSync(entryFile) && fs.readFileSync(entryFile, 'utf8').includes(`PLUGIN_VERSION = '${packageJson.version}'`))
+
+  // --- queued calls must not reach the page after timeout or cancellation ---
+  await checkQueuedCleanup(hostSource)
 
   // --- default mount ---
   const harness = start()
