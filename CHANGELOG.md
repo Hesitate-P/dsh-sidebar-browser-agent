@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.6
+
+- `waitForLoadState('load')` listens only for the `load` event instead of
+  settling early on `DOMContentLoaded`.
+- A command still sitting in the bridge queue is dropped when its caller times
+  out or aborts, so a later poll cannot execute a cancelled side effect.
+- The select-all workaround for `Meta+A`/`Ctrl+A` runs per key combo, so it
+  acts before the next key in a `press` sequence.
+- `check`/`uncheck` fails with `[unfulfilled]` when the target did not reach the
+  requested state (a selected radio cannot be unchecked).
+- `fullPage` and `clip` are validated before the guest style is changed, so a
+  conflicting screenshot request cannot leave a stale full-page size.
+
 ## 0.5.5
 
 - Replace unreliable CSP-violation detection with an actionable
