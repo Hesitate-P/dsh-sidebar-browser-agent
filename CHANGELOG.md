@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.7
+
+- Refs are monotonic per document and resolved through the current snapshot
+  map, so an old ref cannot silently point at a different element after a new
+  snapshot; it reports `[stale-ref]` instead.
+- Contenteditable `type` with `clear:false` appends at the caret instead of
+  replacing the selected contents.
+- Textarea detection uses `tagName`, so a same-origin iframe textarea no longer
+  takes the input value setter (`Illegal invocation`).
+- Downloads/uploads receive a deadline and stop between chunks rather than
+  writing past the client transfer timeout; a deadline is reported as
+  `[deadline]`, not as a source fetch failure that would trigger the native
+  fallback.
+
 ## 0.5.6
 
 - `waitForLoadState('load')` listens only for the `load` event instead of
