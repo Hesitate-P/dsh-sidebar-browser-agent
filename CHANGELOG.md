@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.8
+
+- Give each transfer one cancellation authority: an AbortController and deadline
+  timer whose signal covers the fetch and response-body reads, so an expired
+  upload no longer attaches files or dispatches drop/change events.
+- Collapse the download fallback to a single boundary: native URL fallback only
+  when the source fetch fails before a response arrives. Body-read and sink
+  failures are reported as `transfer-failed` and never start a second download.
+- Report upload failures as `upload-failed` instead of a misleading
+  `fetch-failed`/CSP label.
+- Reject malformed completion metadata and propagate completion-body read
+  errors instead of finalizing with guessed defaults.
+
 ## 0.5.7
 
 - Refs are monotonic per document and resolved through the current snapshot

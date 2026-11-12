@@ -327,6 +327,7 @@ const guestContext = {
       this.bubbles = Boolean(init?.bubbles)
     }
   },
+  AbortController,
   HTMLInputElement: FakeInputElement,
   HTMLTextAreaElement: FakeTextAreaElement,
   Element: FakeElement,
@@ -884,6 +885,92 @@ async function main() {
   }
   const fallbackDownload = await send({ id: 'd2', action: 'download', sessionId: 'session-1', tabId: tab.tabId, url: 'https://blocked.test/file.bin', sink: { url: 'http://127.0.0.1:1/sink?token=f' } })
   check('download falls back to the native URL save when page fetch is blocked', fallbackDownload.ok === true && fallbackDownload.value.method === 'native-url' && fallbackDownload.value.path === '/tmp/downloads/fallback.txt' && saveRequests.length === 1 && saveRequests[0].url === 'https://blocked.test/file.bin', JSON.stringify({ value: fallbackDownload.value, requests: saveRequests }).slice(0, 400))
+
+  // Run the actual serialized guest functions with short deadlines.
+  const transferFunction = (name) => {
+    const start = source.indexOf(`    async function ${name}(arg)`)
+    return source.slice(start, source.indexOf('\n    /**', start))
+  }
+  const guestTransfer = (name, args) => guestEval(`(${transferFunction(name)})(${JSON.stringify(args)})`)
+  const transferFetch = guestContext.fetch
+  const originalTimer = guestContext.setTimeout
+  const originalClearTimer = guestContext.clearTimeout
+  const transferTimers = new Set()
+  guestContext.setTimeout = (fn, ms) => {
+    const timer = setTimeout(fn, ms)
+    transferTimers.add(timer)
+    return timer
+  }
+  guestContext.clearTimeout = (timer) => {
+    transferTimers.delete(timer)
+    clearTimeout(timer)
+  }
+  const uploadArgs = { selector: '#file-upload', files: [{ name: 'late.txt', url: 'http://bridge/source' }] }
+  const downloadArgs = { sourceUrl: 'https://source.test/file', sinkUrl: 'http://bridge/sink?token=x' }
+  const onAbort = (signal) => new Promise((_, reject) => {
+    if (signal.aborted) reject(signal.reason)
+    else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+  })
+  try {
+    const priorFiles = uploadInput.files
+    const priorEvents = uploadInput.events.length
+    guestContext.fetch = async () => ({ ok: true, blob: async () => {
+      await new Promise(resolve => setTimeout(resolve, 60))
+      return { type: 'text/plain' }
+    } })
+    const lateUpload = await guestTransfer('guestUpload', { ...uploadArgs, deadline: Date.now() + 20 })
+    check('late upload cannot attach files or fire events', lateUpload.ok === false && lateUpload.error.includes('[deadline]')
+      && uploadInput.files === priorFiles && uploadInput.events.length === priorEvents, lateUpload)
+
+    for (const name of ['guestUpload', 'guestDownloadToSink']) {
+      let signal
+      guestContext.fetch = async (_url, init) => {
+        signal = init.signal
+        return { ok: true, headers: { get: () => null },
+          blob: () => onAbort(signal), body: { getReader: () => ({ read: () => onAbort(signal) }) } }
+      }
+      const result = await Promise.race([
+        guestTransfer(name, { ...(name === 'guestUpload' ? uploadArgs : downloadArgs), deadline: Date.now() + 30 }),
+        new Promise(resolve => setTimeout(() => resolve({ error: 'test watchdog' }), 500)),
+      ])
+      check(`${name} aborts stalled body reads`, signal?.aborted === true && result.ok === false && result.error.includes('[deadline]'), result)
+    }
+
+    for (const name of ['guestUpload', 'guestDownloadToSink']) {
+      let signal
+      guestContext.fetch = (_url, init) => { signal = init.signal; return onAbort(signal) }
+      const result = await Promise.race([
+        guestTransfer(name, { ...(name === 'guestUpload' ? uploadArgs : downloadArgs), deadline: Date.now() + 30 }),
+        new Promise(resolve => setTimeout(() => resolve({ error: 'test watchdog' }), 500)),
+      ])
+      check(`${name} aborts stalled fetch`, signal?.aborted === true && result.ok === false && result.error.includes('[deadline]'), result)
+    }
+
+    const previousFallbacks = saveRequests.length
+    for (const phase of ['chunk', 'done']) {
+      guestContext.fetch = async (url, init) => {
+        if (String(url).startsWith('https://source.test')) return transferFetch('data:text/plain;base64,aGk=', init)
+        if (String(url).includes(phase === 'chunk' ? 'chunk=' : 'done=1')) throw new TypeError('sink network failed')
+        return transferFetch(url, init)
+      }
+      const result = await send({ id: `sink-${phase}`, action: 'download', sessionId: 'session-1', tabId: tab.tabId,
+        url: downloadArgs.sourceUrl, sink: { url: downloadArgs.sinkUrl } })
+      check(`sink ${phase} network failure never falls back`, result.ok === false && result.error.includes('[transfer-failed]')
+        && saveRequests.length === previousFallbacks, result)
+    }
+    guestContext.fetch = transferFetch
+    const success = await guestTransfer('guestUpload', { ...uploadArgs, files: [{name:'ok.txt',url:'http://bridge/source?token=ok'}], deadline: Date.now() + 500 })
+    check('short deadline upload succeeds while within budget', success.ok === true && uploadInput.files[0].name === 'ok.txt', success)
+    const downloaded = await guestTransfer('guestDownloadToSink', { sourceUrl: 'data:text/plain;base64,aGk=',
+      sinkUrl: downloadArgs.sinkUrl, deadline: Date.now() + 500 })
+    check('short deadline download succeeds while within budget', downloaded.ok === true && downloaded.bytes === bridgeMock.download.length, downloaded)
+    check('all transfer timers are cleaned up', transferTimers.size === 0, transferTimers.size)
+  } finally {
+    guestContext.fetch = transferFetch
+    guestContext.setTimeout = originalTimer
+    guestContext.clearTimeout = originalClearTimer
+    for (const timer of transferTimers) clearTimeout(timer)
+  }
 
   const waitVisible = await send({ id: 'w1', action: 'waitForSelector', sessionId: 'session-1', tabId: tab.tabId, selector: '#q', state: 'visible' })
   check('waitForSelector visible', waitVisible.ok === true && waitVisible.value.matched === true, JSON.stringify(waitVisible.value).slice(0, 200))

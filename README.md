@@ -30,8 +30,8 @@
 - `batch` 不能嵌套，也不能包含 screenshot/upload/download；页面卡死时 guest 调用超时（脚本 25s / 导航 20s）并返回错误。
 - `eval`、原生输入、上传、域名白名单受 profile 配置约束。
 - JS 对话框不会弹系统窗；`confirm`/`prompt` 的返回值由 `dialog` 策略决定，因此不要依赖真实弹窗交互。对话框策略会随标签保留，但页面加载完成前触发的对话框无法记录。
-- 下载：guest 内原生下载被 DSH 安全策略拦截，因此走环回文件桥；文件大小受页面内存、磁盘和传输预算限制，不再有固定的 12 MB 上限；跨域无 CORS 或页面 CSP 阻断 fetch 时，回退为应用会话直链原生保存。这条回退路径不保留页面登录态，也不使用 `path` 参数。
-- 上传：依赖页面的 `<input type=file>` 或 drag/drop 监听；File System Access API（`showOpenFilePicker`）不在覆盖范围；单文件 ≤ 256 MB、单次合计 ≤ 512 MB（受 bridge、页面内存和传输预算约束）。页面 CSP 的 `connect-src` 若不允许环回地址，上传会以 `[fetch-failed]` 失败并提示可能是 CSP/CORS 拦截。
+- 下载：guest 内原生下载被 DSH 安全策略拦截，因此走环回文件桥；文件大小受页面内存、磁盘和传输预算限制，不再有固定的 12 MB 上限；仅在尚未取得源响应且 fetch 因网络、CORS 或 CSP 失败时，回退为应用会话直链原生保存；读取响应体或写入文件桥失败不会重新下载。这条回退路径不保留页面登录态，也不使用 `path` 参数。
+- 上传：依赖页面的 `<input type=file>` 或 drag/drop 监听；File System Access API（`showOpenFilePicker`）不在覆盖范围；单文件 ≤ 256 MB、单次合计 ≤ 512 MB（受 bridge、页面内存和传输预算约束）。页面 CSP 的 `connect-src` 若不允许环回地址，上传会以 `[upload-failed]` 失败。
 - 环回文件桥绑定 `127.0.0.1` 的临时端口，token 一次性、5 分钟过期；DSH guest 会话会拦截对应用本身端口的请求，因此桥必须使用独立端口。
 - 只能访问宿主侧栏浏览器允许的 HTTP(S) 页面，地址栏规则之外的目标不可达。
 

@@ -637,6 +637,12 @@ async function main() {
   const emptyDownload = await runTool(harness, 'sidebar_page', { action: 'download', url: 'data:text/plain;base64,', path: emptyPath })
   const emptyPoll = await emptyTurn
   const emptySink = emptyPoll.json.commands[0]?.sink?.url
+  const malformedDone = await fetch(`${emptySink}&done=1`, { method: 'POST', body: '{broken' })
+  check('malformed completion is rejected without publishing', malformedDone.status === 400 && !fs.existsSync(emptyPath))
+  const oversizedDone = await fetch(`${emptySink}&done=1`, { method: 'POST', body: ' '.repeat(1024 * 1024 + 1) })
+  check('completion read failure does not publish', oversizedDone.status >= 400 && !fs.existsSync(emptyPath))
+  const nullDone = await fetch(`${emptySink}&done=1`, { method: 'POST', body: 'null' })
+  check('completion requires object metadata', nullDone.status === 400 && !fs.existsSync(emptyPath))
   const emptyDone = typeof emptySink === 'string'
     ? await fetch(`${emptySink}&done=1`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ filename: 'empty.txt' }) })
     : undefined
