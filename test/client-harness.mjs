@@ -970,6 +970,15 @@ async function main() {
     ? { ok: false, error: 'no shadow ref' }
     : await send({ id: 'ds3', action: 'type', sessionId: 'session-1', tabId: tab.tabId, ref: shadowInputRef, text: 'typed', clear: true })
   check('shadow refs work for fill typing', shadowType.ok === true && shadowInput.value === 'typed', JSON.stringify({ shadowType, value: shadowInput.value }).slice(0, 300))
+  const oldSnapshotRef = /- \[(e\d+)\]/.exec(deepSnap.value.text)?.[1]
+  const frontButton = new FakeElement('button', { attrs: { id: 'front-extra' }, rect: { x: 20, y: 20, width: 80, height: 24 }, text: 'front extra' })
+  body.children.unshift(frontButton)
+  await send({ id: 'ds2a', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, maxElements: 100 })
+  const retargetRead = await send({ id: 'ds2b', action: 'read', sessionId: 'session-1', tabId: tab.tabId, ref: oldSnapshotRef, mode: 'text' })
+  check('old refs do not retarget after a new snapshot',
+    retargetRead.ok === false && String(retargetRead.error).includes('stale-ref'),
+    JSON.stringify(retargetRead).slice(0, 300))
+  body.children.shift()
 
   // --- timeout helpers and hung-page resilience ---
   const timeoutError = await moduleExports.__test.withTimeout(new Promise(() => {}), 80, 'Probe')
