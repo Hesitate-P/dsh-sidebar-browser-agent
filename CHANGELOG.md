@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased
+
+- Report navigation instead of losing it: a click that replaces the document now answers
+  `observed: navigated to <url> "<title>"`, a slow destination answers `navigating to <url>
+  (still loading)` while it loads, and a main-frame failure answers `navigation failed: <reason>`.
+  The before/after observer lives in the old document and dies with it, so navigation evidence
+  now comes from the guest main-frame events; an action whose effect cannot be read is reported
+  as `observed: unknown` instead of "no visible change", so a click that already worked is not
+  repeated.
+- `back` and `forward` wait for the destination document (or a same-document history event)
+  before reading native facts, so the reply names the page that is now on screen rather than the
+  one that was. A traversal that cannot be confirmed answers `[navigation-timeout]`, and a
+  failed one answers `[navigation-failed]`, instead of returning stale facts as success.
+- `snapshot` walks the flat tree: open `shadowRoot`s, `<slot>` `assignedElements({ flatten: true })`
+  with the slot's default children as fallback, and same-origin `iframe` bodies, bounded by
+  shadow/frame nesting rather than by DOM depth. Only `display: none` and `opacity: 0` prune a
+  subtree; `0x0`, `display: contents` and `visibility: hidden` containers are skipped as targets
+  but keep descending, so ui5 static-area menus and tab containers are reachable.
+- Names come from the flat slot text with a shadow-host fallback, comment nodes are skipped (Lit
+  `?lit$...$` markers no longer leak into names), a host and its coinciding inner control are one
+  target, decorative `aria-hidden`/`presentation` elements and shadow-internal `tabindex="-1"`
+  elements are ignored, and a truncated snapshot now hints at `scope` and `maxNodes`.
+- CSS selectors, `snapshot` `scope`, `contains`, `read`, `waitForSelector`, `wait`,
+  `scrollIntoView` and `upload` search open shadow roots and same-origin iframes when the top
+  document has no match, through page helpers that carry a version so a page that ran an older
+  build picks up the new ones.
+
 ## 0.5.8
 
 - Give each transfer one cancellation authority: an AbortController and deadline

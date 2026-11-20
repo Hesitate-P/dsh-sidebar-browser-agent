@@ -707,6 +707,28 @@ async function main() {
   await turn
   check('page failure propagates', pageError === 'the page context rejected the script: boom', pageError)
 
+  // --- observed summary: navigation evidence instead of a false "no change" ---
+  const renderClick = (observed) => harness.tools.get('sidebar_page').definition.output.render({}, {
+    action: 'click',
+    target: { tag: 'a', label: 'Learn more' },
+    ...(observed === undefined ? {} : { observed }),
+  })[0].text
+  const unknownText = renderClick({ status: 'unavailable' })
+  check('an unreadable action is reported as unknown, not as no change',
+    unknownText.includes('unknown') && !unknownText.includes('no visible change'), unknownText)
+  const navigatedText = renderClick({ status: 'complete', changed: true, navigated: true, url: 'https://next.test/help', title: 'Help' })
+  check('a completed navigation renders its destination and title',
+    navigatedText.includes('navigated to https://next.test/help') && navigatedText.includes('"Help"'), navigatedText)
+  const pendingText = renderClick({ status: 'complete', changed: true, navigating: true, pendingUrl: 'https://next.test/slow' })
+  check('a navigation still loading renders its pending destination',
+    pendingText.includes('navigating to https://next.test/slow') && pendingText.includes('still loading'), pendingText)
+  const failedText = renderClick({ status: 'complete', changed: true, navigationError: 'ERR_CONNECTION_REFUSED' })
+  check('a failed navigation renders the failure reason',
+    failedText.includes('navigation failed: ERR_CONNECTION_REFUSED'), failedText)
+  const partialText = renderClick({ status: 'partial', changed: true, urlChanged: true, missing: ['mutations'] })
+  check('a partial observation names what could not be observed',
+    partialText.includes('observed (partial)') && partialText.includes('mutations'), partialText)
+
   // --- output values validate against their own schemas ---
   for (const [name, value] of [
     ['sidebar_browser', open],
