@@ -716,6 +716,13 @@ async function main() {
   const unknownText = renderClick({ status: 'unavailable' })
   check('an unreadable action is reported as unknown, not as no change',
     unknownText.includes('unknown') && !unknownText.includes('no visible change'), unknownText)
+  const newTabText = renderClick({
+    status: 'unavailable',
+    changed: true,
+    newTabs: [{ tabId: 'tab-new', url: 'https://next.test/help' }],
+  })
+  check('confirmed new tabs are rendered even when page observation is unavailable',
+    newTabText.includes('observed (partial)') && newTabText.includes('tab-new https://next.test/help'), newTabText)
   const navigatedText = renderClick({ status: 'complete', changed: true, navigated: true, url: 'https://next.test/help', title: 'Help' })
   check('a completed navigation renders its destination and title',
     navigatedText.includes('navigated to https://next.test/help') && navigatedText.includes('"Help"'), navigatedText)

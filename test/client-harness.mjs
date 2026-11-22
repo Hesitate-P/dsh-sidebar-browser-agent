@@ -256,11 +256,28 @@ const guestContext = {
       return found.length > 0 ? found : queryAll(body, selector)
     },
     createRange() {
-      return { selectNodeContents() {} }
+      return {
+        selectNodeContents(element) {
+          this.element = element
+          this.offset = null
+        },
+        collapse(toStart) {
+          this.offset = toStart ? 0 : this.element.textContent.length
+        },
+      }
     },
     execCommand(command, _showUi, value) {
       guest.commands = guest.commands ?? []
       guest.commands.push({ command, value })
+      const range = guest.selection
+      if (command === 'insertText' && range?.element?.isContentEditable) {
+        const element = range.element
+        const text = element.textContent
+        element.textContent = range.offset === null
+          ? value
+          : text.slice(0, range.offset) + value + text.slice(range.offset)
+        element.innerText = element.textContent
+      }
       return true
     },
     elementFromPoint(x, y) {
@@ -288,7 +305,10 @@ const guestContext = {
     return { display: 'block', visibility: 'visible', opacity: '1', ...(target && target.style ? target.style : {}) }
   },
   getSelection() {
-    return { removeAllRanges() {}, addRange() {} }
+    return {
+      removeAllRanges() { guest.selection = null },
+      addRange(range) { guest.selection = range },
+    }
   },
   performance: { now: () => Date.now() },
   CSS: { escape: (value) => String(value) },
@@ -835,6 +855,20 @@ async function main() {
     && input.events.includes('input') && input.events.includes('change'), `${input.value} ${JSON.stringify(input.events)}`)
   check('type submits with Enter', inputEvents.some((event) => event.keyCode === 'Enter'), JSON.stringify(inputEvents))
 
+  const editor = new FakeElement('div', {
+    attrs: { id: 'editor', contenteditable: 'true' },
+    text: 'existing text',
+  })
+  body.append(editor)
+  try {
+    const append = await send({ id: 'p4-append', action: 'type', sessionId: 'session-1', tabId: tab.tabId, selector: '#editor', text: ' plus more', clear: false })
+    check('fill with clear:false appends to a contenteditable field',
+      append.ok === true && editor.textContent === 'existing text plus more', editor.textContent)
+  } finally {
+    guest.selection = null
+    body.children.pop()
+  }
+
   inputEvents.length = 0
   const press = await send({ id: 'p5', action: 'press', sessionId: 'session-1', tabId: tab.tabId, key: 'Tab' })
   check('press native key', press.ok === true && press.value.key === 'Tab' && inputEvents.some((event) => event.keyCode === 'Tab'), JSON.stringify(inputEvents))
@@ -1239,6 +1273,35 @@ async function main() {
     webview.sendInputEvent = (event) => {
       originalSendInputEvent.call(webview, event)
       if (event.type !== 'mouseUp') return
+      const url = 'https://next.test/still-parsing'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url, isMainFrame: true }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate'), { url }))
+    }
+    const parsingClick = await send({ id: 'nv-committed', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+    check('a committed destination is still loading until DOM ready',
+      parsingClick.ok === true && parsingClick.value.observed?.navigating === true
+        && parsingClick.value.observed.pendingUrl === 'https://next.test/still-parsing',
+      parsingClick.value?.observed)
+
+    webview.sendInputEvent = (event) => {
+      originalSendInputEvent.call(webview, event)
+      if (event.type !== 'mouseUp') return
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate-in-page'), {
+        url: 'https://example.test/page#step', isMainFrame: true,
+      }))
+      const url = 'https://next.test/after-step'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url, isMainFrame: true }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate'), { url }))
+    }
+    const nextClick = await send({ id: 'nv-after-step', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+    check('an in-page change cannot mark the following new document ready',
+      nextClick.ok === true && nextClick.value.observed?.navigating === true
+        && nextClick.value.observed.pendingUrl === 'https://next.test/after-step',
+      nextClick.value?.observed)
+
+    webview.sendInputEvent = (event) => {
+      originalSendInputEvent.call(webview, event)
+      if (event.type !== 'mouseUp') return
       guestFrameEvents.dispatchEvent(Object.assign(new Event('did-fail-load'), {
         isMainFrame: true,
         errorDescription: 'ERR_CONNECTION_REFUSED',
@@ -1274,6 +1337,32 @@ async function main() {
     check('forward reports the destination document once it has loaded',
       forwardTurn.ok === true && forwardTurn.value.url === 'https://next.test/help' && forwardTurn.value.title === 'Help',
       JSON.stringify(forwardTurn.value))
+
+    let finishTimer
+    webview.goForward = function () {
+      this.forwardCalls += 1
+      this.url = 'https://next.test/loading'
+      this.title = 'Loading'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url: this.url, isMainFrame: true, isInPlace: false }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate'), { url: this.url }))
+      this.url += '#section'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url: this.url, isMainFrame: true, isInPlace: true }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate-in-page'), { url: this.url, isMainFrame: true }))
+      finishTimer = setTimeout(() => {
+        this.title = 'Loaded destination'
+        guestFrameEvents.dispatchEvent(new Event('did-finish-load'))
+      }, 150)
+    }
+    try {
+      const loadingForward = await send({ id: 'nx-loading', action: 'forward', sessionId: 'session-1', tabId: tab.tabId, waitUntil: 'load', timeoutMs: 1000 })
+      check('forward waits for load after an in-page URL change on the new document',
+        loadingForward.ok === true && loadingForward.value.title === 'Loaded destination'
+          && loadingForward.value.url === 'https://next.test/loading#section',
+        loadingForward.value ?? loadingForward.error)
+    } finally {
+      clearTimeout(finishTimer)
+    }
+
     webview.goBack = function () { this.backCalls += 1 }
     const stalledBack = await send({ id: 'nx3', action: 'back', sessionId: 'session-1', tabId: tab.tabId, timeoutMs: 150 })
     check('a traversal that never commits is a timeout, not a stale success',
@@ -1369,6 +1458,13 @@ async function main() {
     attachShadow(dedupHost, [dedupInner])
     body.append(dedupHost)
 
+    const searchRect = { x: 280, y: 420, width: 110, height: 32 }
+    const searchLabel = { 'aria-label': 'Catalog Search' }
+    const searchHost = new FakeElement('ui5-search', { attrs: { ...searchLabel, role: 'searchbox' }, rect: searchRect })
+    const searchInput = new FakeInputElement('input', { attrs: searchLabel, rect: searchRect })
+    attachShadow(searchHost, [searchInput])
+    body.append(searchHost)
+
     body.append(wrapRoot)
     body.append(staticArea)
 
@@ -1401,6 +1497,10 @@ async function main() {
     check('a host and its coinciding inner control are one ref, and decorative icons are skipped',
       dedupMatches.length === 1 && !pageText.includes('ui5-icon'), pageText)
 
+    const searchFill = await send({ id: 'sd-search', action: 'type', sessionId: 'session-1', tabId: tab.tabId, contains: 'Catalog Search', text: 'blue' })
+    check('contains keeps the actual shadow input for a deduplicated host',
+      searchFill.ok === true && searchInput.value === 'blue', { target: searchFill.value?.target, error: searchFill.error })
+
     const scopedMenu = await send({ id: 'sd6', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, scope: 'ui5-static-area-item' })
     check('a scope on a shadow host lists the controls inside its shadow root',
       scopedMenu.ok === true && scopedMenu.value.refs >= 1 && String(scopedMenu.value.text).includes('menuitem "Save As"'),
@@ -1408,6 +1508,12 @@ async function main() {
     const scopedFrame = await send({ id: 'sd7', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, scope: '#sap-deep-frame' })
     check('a scope on a same-origin iframe lists the controls inside it',
       scopedFrame.ok === true && String(scopedFrame.value.text).includes('"Next"'), JSON.stringify(scopedFrame).slice(0, 300))
+
+    body.append(new FakeElement('button', { attrs: { id: 'top-next' }, text: 'Next' }))
+    const topContains = await send({ id: 'sd-top-contains', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Next' })
+    check('contains prefers a top-level match even after an iframe-scoped snapshot',
+      topContains.ok === true && topContains.value.target.selector === '#top-next',
+      topContains.value?.target ?? topContains.error)
 
     const truncated = await send({ id: 'sd8', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, maxNodes: 3 })
     check('a truncated snapshot points at scope and maxNodes',
