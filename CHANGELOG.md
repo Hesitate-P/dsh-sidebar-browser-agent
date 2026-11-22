@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.9
 
 - Report navigation instead of losing it: a click that replaces the document now answers
   `observed: navigated to <url> "<title>"`, a slow destination answers `navigating to <url>
@@ -26,6 +26,8 @@
   `scrollIntoView` and `upload` search open shadow roots and same-origin iframes when the top
   document has no match, through page helpers that carry a version so a page that ran an older
   build picks up the new ones.
+- When filling a contenteditable field, `clear:false` preserves the existing text. Action summaries
+  keep confirmed new tabs when DOM observation is unavailable.
 
 ## 0.5.8
 
