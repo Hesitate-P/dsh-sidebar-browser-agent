@@ -32,7 +32,7 @@ check('client version matches package', source.includes(`PLUGIN_VERSION = '${pac
 // ---------------------------------------------------------------------------
 
 class FakeElement {
-  constructor(tag, { attrs = {}, rect = { x: 0, y: 0, width: 100, height: 20 }, text = '' } = {}) {
+  constructor(tag, { attrs = {}, rect = { x: 0, y: 0, width: 100, height: 20 }, text = '', style = {} } = {}) {
     this.tagName = tag.toUpperCase()
     this.attributes = { ...attrs }
     this.rect = rect
@@ -45,6 +45,11 @@ class FakeElement {
     this.events = []
     this.scrolledInto = false
     this.focused = false
+    this.style = { ...style }
+  }
+
+  getRootNode() {
+    return this.ownerDocument ?? guestContext.document
   }
 
   get id() {
@@ -134,7 +139,7 @@ documentElement.append(body)
 
 /** Parse the small selector vocabulary the guest scripts use. */
 function matches(el, compound) {
-  const match = /^([a-z0-9]*)(?:#([A-Za-z0-9_-]+))?((?:\[[^\]]*\])*)$/.exec(compound.trim())
+  const match = /^([a-z0-9-]*)(?:#([A-Za-z0-9_-]+))?((?:\[[^\]]*\])*)$/.exec(compound.trim())
   if (match === null) return false
   const [, tag, id, attributePart] = match
   if (tag !== '' && el.tagName !== tag.toUpperCase()) return false
@@ -151,6 +156,16 @@ function matches(el, compound) {
 
 function queryAll(root, selector) {
   const results = []
+  if (selector === '*') {
+    const visitAll = (element) => {
+      for (const child of element.children) {
+        results.push(child)
+        visitAll(child)
+      }
+    }
+    visitAll(root)
+    return results
+  }
   const parts = selector.split(',').map((part) => part.trim())
   const visit = (element) => {
     for (const child of element.children) {
@@ -165,6 +180,59 @@ function queryAll(root, selector) {
   }
   visit(root)
   return results
+}
+
+/**
+ * Give a host element an open shadow root the way a web component does: the root exposes
+ * querySelector(All), and every element inside it reports the root from getRootNode().
+ */
+function attachShadow(host, children, ownerDocument = guestContext.document) {
+  const shadow = {
+    host,
+    children,
+    querySelector(selector) {
+      return queryAll(shadow, selector)[0] ?? null
+    },
+    querySelectorAll(selector) {
+      return selector === '*' ? queryAll(shadow, '') : queryAll(shadow, selector)
+    },
+  }
+  const tagSubtree = (node) => {
+    node.getRootNode = () => shadow
+    node.ownerDocument = ownerDocument
+    for (const child of node.children ?? []) tagSubtree(child)
+  }
+  for (const child of children) tagSubtree(child)
+  host.shadowRoot = shadow
+  return shadow
+}
+
+/** Give a same-origin iframe a document with the given body children. */
+function attachFrameDocument(frame, children) {
+  const frameBody = new FakeElement('body', { rect: { x: 0, y: 0, width: 640, height: 480 } })
+  for (const child of children) frameBody.append(child)
+  const doc = {
+    body: frameBody,
+    defaultView: { frameElement: frame, getComputedStyle: guestContext.getComputedStyle },
+    querySelector(selector) {
+      if (selector === 'body') return frameBody
+      return queryAll(frameBody, selector)[0] ?? null
+    },
+    querySelectorAll(selector) {
+      if (selector === 'body') return [frameBody]
+      if (selector === '*') return [frameBody, ...queryAll(frameBody, '')]
+      return queryAll(frameBody, selector)
+    },
+  }
+  const tagDoc = (node) => {
+    if (!node.ownerDocument) node.ownerDocument = doc
+    for (const child of node.children ?? []) tagDoc(child)
+  }
+  frameBody.ownerDocument = doc
+  for (const child of children) tagDoc(child)
+  if (!frame.ownerDocument) frame.ownerDocument = guestContext.document
+  frame.contentDocument = doc
+  return doc
 }
 
 const bridgeMock = { upload: Buffer.from('upload-bridge-bytes'), download: Buffer.from('download-bridge-bytes'), sink: [], done: null }
@@ -188,11 +256,28 @@ const guestContext = {
       return found.length > 0 ? found : queryAll(body, selector)
     },
     createRange() {
-      return { selectNodeContents() {} }
+      return {
+        selectNodeContents(element) {
+          this.element = element
+          this.offset = null
+        },
+        collapse(toStart) {
+          this.offset = toStart ? 0 : this.element.textContent.length
+        },
+      }
     },
     execCommand(command, _showUi, value) {
       guest.commands = guest.commands ?? []
       guest.commands.push({ command, value })
+      const range = guest.selection
+      if (command === 'insertText' && range?.element?.isContentEditable) {
+        const element = range.element
+        const text = element.textContent
+        element.textContent = range.offset === null
+          ? value
+          : text.slice(0, range.offset) + value + text.slice(range.offset)
+        element.innerText = element.textContent
+      }
       return true
     },
     elementFromPoint(x, y) {
@@ -216,11 +301,14 @@ const guestContext = {
     guest.scrollX += Number(options.left ?? 0)
     guest.scrollY += Number(options.top ?? 0)
   },
-  getComputedStyle() {
-    return { display: 'block', visibility: 'visible', opacity: '1' }
+  getComputedStyle(target) {
+    return { display: 'block', visibility: 'visible', opacity: '1', ...(target && target.style ? target.style : {}) }
   },
   getSelection() {
-    return { removeAllRanges() {}, addRange() {} }
+    return {
+      removeAllRanges() { guest.selection = null },
+      addRange(range) { guest.selection = range },
+    }
   },
   performance: { now: () => Date.now() },
   CSS: { escape: (value) => String(value) },
@@ -365,9 +453,17 @@ function makeImage(width, height, dataUrl = 'data:image/png;base64,QUJD') {
   }
 }
 
+// Main-frame events of the guest survive a document replacement, so navigation evidence comes from
+// them; a fake guest needs the same event surface the real Electron webview has.
+const guestFrameEvents = new EventTarget()
+
 const webview = {
   dataset: { sidebarBrowserFrame: 'webview' },
+  addEventListener: guestFrameEvents.addEventListener.bind(guestFrameEvents),
+  removeEventListener: guestFrameEvents.removeEventListener.bind(guestFrameEvents),
   focused: false,
+  url: 'https://example.test/page',
+  title: 'Test Page',
   loadUrlCalls: [],
   reloadCalls: 0,
   zoomFactor: 1,
@@ -379,8 +475,14 @@ const webview = {
   canForward: false,
   canGoBack() { return this.canBack === true },
   canGoForward() { return this.canForward === true },
-  goBack() { this.backCalls += 1 },
-  goForward() { this.forwardCalls += 1 },
+  goBack() {
+    this.backCalls += 1
+    guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate-in-page'), { url: this.getURL(), isMainFrame: true }))
+  },
+  goForward() {
+    this.forwardCalls += 1
+    guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate-in-page'), { url: this.getURL(), isMainFrame: true }))
+  },
   async executeJavaScript(sourceText) {
     return await guestEval(sourceText)
   },
@@ -401,10 +503,10 @@ const webview = {
     return { x: 0, y: 0, width: 1024, height: 768, left: 0, top: 0, right: 1024, bottom: 768 }
   },
   getURL() {
-    return 'https://example.test/page'
+    return this.url
   },
   getTitle() {
-    return 'Test Page'
+    return this.title
   },
   isLoading() {
     return false
@@ -752,6 +854,20 @@ async function main() {
   check('type writes value', type.ok === true && type.value.typed === 11 && input.value === 'hello world'
     && input.events.includes('input') && input.events.includes('change'), `${input.value} ${JSON.stringify(input.events)}`)
   check('type submits with Enter', inputEvents.some((event) => event.keyCode === 'Enter'), JSON.stringify(inputEvents))
+
+  const editor = new FakeElement('div', {
+    attrs: { id: 'editor', contenteditable: 'true' },
+    text: 'existing text',
+  })
+  body.append(editor)
+  try {
+    const append = await send({ id: 'p4-append', action: 'type', sessionId: 'session-1', tabId: tab.tabId, selector: '#editor', text: ' plus more', clear: false })
+    check('fill with clear:false appends to a contenteditable field',
+      append.ok === true && editor.textContent === 'existing text plus more', editor.textContent)
+  } finally {
+    guest.selection = null
+    body.children.pop()
+  }
 
   inputEvents.length = 0
   const press = await send({ id: 'p5', action: 'press', sessionId: 'session-1', tabId: tab.tabId, key: 'Tab' })
@@ -1116,6 +1232,299 @@ async function main() {
   const mismatchRead = await send({ id: 'm1', action: 'read', sessionId: 'session-9', tabId: tab.tabId })
   check('unknown session surface refuses', mismatchRead.ok === false
     && mismatchRead.error.includes('no right-sidebar surface'), mismatchRead.error)
+
+  // --- navigation evidence survives a document replacement ---
+  const commitDocument = (url, title) => {
+    webview.url = url
+    webview.title = title
+    guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate'), { url, isMainFrame: true }))
+    guestFrameEvents.dispatchEvent(new Event('dom-ready'))
+    guestFrameEvents.dispatchEvent(new Event('did-finish-load'))
+  }
+  const originalSendInputEvent = webview.sendInputEvent
+  try {
+    // A click that replaces the document destroys the DOM observer the baseline lived in.
+    webview.sendInputEvent = (event) => {
+      originalSendInputEvent.call(webview, event)
+      if (event.type !== 'mouseUp') return
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url: 'https://next.test/help', isMainFrame: true }))
+      commitDocument('https://next.test/help', 'Help')
+    }
+    const replacedClick = await send({ id: 'nv1', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+    check('a click that replaces the document reports the destination',
+      replacedClick.ok === true && replacedClick.value.observed?.navigated === true
+        && replacedClick.value.observed.url === 'https://next.test/help' && replacedClick.value.observed.title === 'Help',
+      JSON.stringify(replacedClick.value?.observed))
+
+    // A slow destination: nothing has committed yet when the reply is due.
+    webview.sendInputEvent = (event) => {
+      originalSendInputEvent.call(webview, event)
+      if (event.type !== 'mouseUp') return
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url: 'https://next.test/slow', isMainFrame: true }))
+    }
+    const slowStartedAt = Date.now()
+    const slowClick = await send({ id: 'nv2', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+    const slowMs = Date.now() - slowStartedAt
+    check('a slow navigation reports its pending destination instead of waiting for the load',
+      slowClick.ok === true && slowClick.value.observed?.navigating === true
+        && slowClick.value.observed.pendingUrl === 'https://next.test/slow' && slowMs < 2500,
+      JSON.stringify({ observed: slowClick.value?.observed, ms: slowMs }))
+
+    webview.sendInputEvent = (event) => {
+      originalSendInputEvent.call(webview, event)
+      if (event.type !== 'mouseUp') return
+      const url = 'https://next.test/still-parsing'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url, isMainFrame: true }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate'), { url }))
+    }
+    const parsingClick = await send({ id: 'nv-committed', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+    check('a committed destination is still loading until DOM ready',
+      parsingClick.ok === true && parsingClick.value.observed?.navigating === true
+        && parsingClick.value.observed.pendingUrl === 'https://next.test/still-parsing',
+      parsingClick.value?.observed)
+
+    webview.sendInputEvent = (event) => {
+      originalSendInputEvent.call(webview, event)
+      if (event.type !== 'mouseUp') return
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate-in-page'), {
+        url: 'https://example.test/page#step', isMainFrame: true,
+      }))
+      const url = 'https://next.test/after-step'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url, isMainFrame: true }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate'), { url }))
+    }
+    const nextClick = await send({ id: 'nv-after-step', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+    check('an in-page change cannot mark the following new document ready',
+      nextClick.ok === true && nextClick.value.observed?.navigating === true
+        && nextClick.value.observed.pendingUrl === 'https://next.test/after-step',
+      nextClick.value?.observed)
+
+    webview.sendInputEvent = (event) => {
+      originalSendInputEvent.call(webview, event)
+      if (event.type !== 'mouseUp') return
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-fail-load'), {
+        isMainFrame: true,
+        errorDescription: 'ERR_CONNECTION_REFUSED',
+      }))
+    }
+    const failedClick = await send({ id: 'nv3', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Submit answer' })
+    check('a failed main-frame navigation is reported as a failure',
+      failedClick.ok === true && failedClick.value.observed?.navigationError === 'ERR_CONNECTION_REFUSED',
+      JSON.stringify(failedClick.value?.observed))
+  } finally {
+    webview.sendInputEvent = originalSendInputEvent
+  }
+
+  // --- back/forward report the destination document, not the page still on screen ---
+  const originalGoBack = webview.goBack
+  const originalGoForward = webview.goForward
+  try {
+    webview.canBack = true
+    webview.canForward = true
+    webview.goBack = function () {
+      this.backCalls += 1
+      setTimeout(() => commitDocument('https://example.test/home', 'Home'), 20)
+    }
+    const backTurn = await send({ id: 'nx1', action: 'back', sessionId: 'session-1', tabId: tab.tabId })
+    check('back reports the destination document',
+      backTurn.ok === true && backTurn.value.url === 'https://example.test/home' && backTurn.value.title === 'Home',
+      JSON.stringify(backTurn.value))
+    webview.goForward = function () {
+      this.forwardCalls += 1
+      setTimeout(() => commitDocument('https://next.test/help', 'Help'), 20)
+    }
+    const forwardTurn = await send({ id: 'nx2', action: 'forward', sessionId: 'session-1', tabId: tab.tabId, waitUntil: 'load' })
+    check('forward reports the destination document once it has loaded',
+      forwardTurn.ok === true && forwardTurn.value.url === 'https://next.test/help' && forwardTurn.value.title === 'Help',
+      JSON.stringify(forwardTurn.value))
+
+    let finishTimer
+    webview.goForward = function () {
+      this.forwardCalls += 1
+      this.url = 'https://next.test/loading'
+      this.title = 'Loading'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url: this.url, isMainFrame: true, isInPlace: false }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate'), { url: this.url }))
+      this.url += '#section'
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-start-navigation'), { url: this.url, isMainFrame: true, isInPlace: true }))
+      guestFrameEvents.dispatchEvent(Object.assign(new Event('did-navigate-in-page'), { url: this.url, isMainFrame: true }))
+      finishTimer = setTimeout(() => {
+        this.title = 'Loaded destination'
+        guestFrameEvents.dispatchEvent(new Event('did-finish-load'))
+      }, 150)
+    }
+    try {
+      const loadingForward = await send({ id: 'nx-loading', action: 'forward', sessionId: 'session-1', tabId: tab.tabId, waitUntil: 'load', timeoutMs: 1000 })
+      check('forward waits for load after an in-page URL change on the new document',
+        loadingForward.ok === true && loadingForward.value.title === 'Loaded destination'
+          && loadingForward.value.url === 'https://next.test/loading#section',
+        loadingForward.value ?? loadingForward.error)
+    } finally {
+      clearTimeout(finishTimer)
+    }
+
+    webview.goBack = function () { this.backCalls += 1 }
+    const stalledBack = await send({ id: 'nx3', action: 'back', sessionId: 'session-1', tabId: tab.tabId, timeoutMs: 150 })
+    check('a traversal that never commits is a timeout, not a stale success',
+      stalledBack.ok === false && String(stalledBack.error).includes('navigation-timeout'), stalledBack.error)
+  } finally {
+    webview.goBack = originalGoBack
+    webview.goForward = originalGoForward
+    webview.canBack = false
+    webview.canForward = false
+  }
+
+  // --- ui5 web components: open shadow roots, slots and same-origin iframes ---
+  const savedBodyChildren = body.children.slice()
+  try {
+    const makeSlot = (assigned = [], fallback = []) => {
+      const slot = new FakeElement('slot', { style: { display: 'contents' } })
+      for (const child of fallback) slot.append(child)
+      // Like the real DOM: assignedElements() yields elements only, assignedNodes() every node.
+      slot.assignedElements = () => assigned.filter((node) => node && typeof node.tagName === 'string')
+      slot.assignedNodes = () => assigned
+      return slot
+    }
+    // A ui5-bar sits inside a same-origin iframe that is itself burrowed eight levels deep.
+    let wrap = new FakeElement('div', { attrs: { id: 'sap-deep-wrap' }, rect: { x: 0, y: 0, width: 800, height: 400 } })
+    const wrapRoot = wrap
+    for (let level = 0; level < 9; level += 1) {
+      const inner = new FakeElement('div', { rect: { x: 0, y: 0, width: 800, height: 400 } })
+      wrap.append(inner)
+      wrap = inner
+    }
+    const deepFrame = new FakeElement('iframe', { attrs: { id: 'sap-deep-frame', src: '/sap-inner.html' }, rect: { x: 20, y: 40, width: 600, height: 300 } })
+    wrap.append(deepFrame)
+    const nextHost = new FakeElement('ui5-button', { attrs: { slot: 'endContent' }, rect: { x: 400, y: 10, width: 80, height: 32 } })
+    const nextButton = new FakeElement('button', { attrs: { type: 'button' }, rect: { x: 400, y: 10, width: 80, height: 32 } })
+    nextButton.append(makeSlot([{ nodeType: 3, nodeValue: 'Next', textContent: 'Next' }]))
+    const cancelHost = new FakeElement('ui5-button', { attrs: { slot: 'endContent' }, rect: { x: 490, y: 10, width: 80, height: 32 } })
+    const cancelButton = new FakeElement('button', { attrs: { type: 'button' }, rect: { x: 490, y: 10, width: 80, height: 32 } })
+    cancelButton.append(makeSlot([], [new FakeElement('span', { rect: { x: 490, y: 10, width: 60, height: 20 }, text: 'Cancel' })]))
+    const ui5Bar = new FakeElement('ui5-bar', { rect: { x: 0, y: 0, width: 600, height: 48 } })
+    ui5Bar.append(nextHost)
+    ui5Bar.append(cancelHost)
+    const barSlot = makeSlot([nextHost, cancelHost])
+    const barContainer = new FakeElement('div', { rect: { x: 0, y: 0, width: 600, height: 48 } })
+    barContainer.append(barSlot)
+    const frameDocument = attachFrameDocument(deepFrame, [ui5Bar])
+    attachShadow(ui5Bar, [barContainer], frameDocument)
+    attachShadow(nextHost, [nextButton], frameDocument)
+    attachShadow(cancelHost, [cancelButton], frameDocument)
+
+    // The Save menu renders into a 0x0 static area with two nested shadow roots.
+    const staticArea = new FakeElement('ui5-static-area-item', { rect: { x: 0, y: 0, width: 0, height: 0 }, style: { display: 'contents' } })
+    const ui5Menu = new FakeElement('ui5-menu', { rect: { x: 50, y: 60, width: 200, height: 80 } })
+    const saveAsItem = new FakeElement('li', { attrs: { id: 'ui5wc_108-menu-item-1', role: 'menuitem' }, rect: { x: 54, y: 64, width: 190, height: 32 }, text: 'Save As' })
+    attachShadow(ui5Menu, [saveAsItem])
+    attachShadow(staticArea, [ui5Menu])
+
+    // Containers that do not paint a box keep their children; display:none does not.
+    const zeroWrap = new FakeElement('div', { rect: { x: 0, y: 0, width: 0, height: 0 } })
+    zeroWrap.append(new FakeElement('button', { attrs: { id: 'zero-wrap-btn' }, rect: { x: 20, y: 120, width: 90, height: 28 }, text: 'Zero Wrap Btn' }))
+    const contentsWrap = new FakeElement('div', { rect: { x: 0, y: 0, width: 0, height: 0 }, style: { display: 'contents' } })
+    contentsWrap.append(new FakeElement('button', { attrs: { id: 'contents-wrap-btn' }, rect: { x: 20, y: 160, width: 90, height: 28 }, text: 'Contents Btn' }))
+    const hiddenWrap = new FakeElement('div', { rect: { x: 20, y: 240, width: 120, height: 40 }, style: { display: 'none' } })
+    hiddenWrap.append(new FakeElement('button', { attrs: { id: 'display-none-btn' }, rect: { x: 20, y: 240, width: 90, height: 28 }, text: 'Display None Btn' }))
+    body.append(zeroWrap)
+    body.append(contentsWrap)
+    body.append(hiddenWrap)
+
+    // A tabcontainer renders its tabs in the shadow root; the light-DOM ui5-tab is 0x0.
+    const tabContainer = new FakeElement('ui5-tabcontainer', { rect: { x: 20, y: 280, width: 400, height: 120 } })
+    tabContainer.append(new FakeElement('ui5-tab', { attrs: { id: 'outline', tabindex: '0' }, rect: { x: 0, y: 0, width: 0, height: 0 }, text: 'Unassigned Tab' }))
+    const outlineTab = new FakeElement('div', { attrs: { role: 'tab' }, rect: { x: 24, y: 284, width: 80, height: 32 }, text: 'Outline' })
+    attachShadow(tabContainer, [outlineTab, makeSlot([])])
+    body.append(tabContainer)
+
+    // A four-word name resolves from the host when the inner slot is empty.
+    const labelledHost = new FakeElement('ui5-button', { attrs: { id: 'host-fb', 'aria-label': 'Host Fallback Label' }, rect: { x: 20, y: 360, width: 90, height: 28 } })
+    const labelledInner = new FakeElement('button', { attrs: { type: 'button' }, rect: { x: 20, y: 360, width: 90, height: 28 } })
+    labelledInner.append(makeSlot([]))
+    attachShadow(labelledHost, [labelledInner])
+    body.append(labelledHost)
+
+    // A top-level match must win over a deep one with the same selector.
+    body.append(new FakeElement('button', { attrs: { id: 'top-dup', 'data-shared': 'dup' }, rect: { x: 20, y: 420, width: 100, height: 28 }, text: 'Top Shared' }))
+    const deepDupHost = new FakeElement('div', { attrs: { id: 'deep-dup-host' }, rect: { x: 20, y: 460, width: 100, height: 28 } })
+    attachShadow(deepDupHost, [new FakeElement('button', { attrs: { id: 'deep-dup', 'data-shared': 'dup' }, rect: { x: 20, y: 460, width: 100, height: 28 }, text: 'Shadow Shared' })])
+    body.append(deepDupHost)
+
+    // An actionable host and its coinciding inner control are one target, not two.
+    const dedupHost = new FakeElement('ui5-button', { attrs: { id: 'dedup-host', tabindex: '0', 'aria-label': 'Dedup Save' }, rect: { x: 140, y: 420, width: 110, height: 32 }, text: 'Dedup Save' })
+    const dedupInner = new FakeElement('button', { attrs: { id: 'dedup-inner', type: 'button' }, rect: { x: 141, y: 421, width: 108, height: 30 }, text: 'Dedup Save' })
+    const decorativeIcon = new FakeElement('ui5-icon', { attrs: { 'aria-hidden': 'true', tabindex: '-1' }, rect: { x: 144, y: 424, width: 16, height: 16 } })
+    dedupInner.append(decorativeIcon)
+    attachShadow(dedupHost, [dedupInner])
+    body.append(dedupHost)
+
+    const searchRect = { x: 280, y: 420, width: 110, height: 32 }
+    const searchLabel = { 'aria-label': 'Catalog Search' }
+    const searchHost = new FakeElement('ui5-search', { attrs: { ...searchLabel, role: 'searchbox' }, rect: searchRect })
+    const searchInput = new FakeInputElement('input', { attrs: searchLabel, rect: searchRect })
+    attachShadow(searchHost, [searchInput])
+    body.append(searchHost)
+
+    body.append(wrapRoot)
+    body.append(staticArea)
+
+    // Deep selectors, text and scope all reach the same elements.
+    const deepRead = await send({ id: 'sd1', action: 'read', sessionId: 'session-1', tabId: tab.tabId, selector: '#ui5wc_108-menu-item-1', mode: 'text' })
+    check('a selector inside two shadow roots resolves for element reads',
+      deepRead.ok === true && deepRead.value.text === 'Save As', JSON.stringify(deepRead).slice(0, 300))
+    const deepClick = await send({ id: 'sd2', action: 'click', sessionId: 'session-1', tabId: tab.tabId, selector: '#ui5wc_108-menu-item-1' })
+    check('a selector inside two shadow roots resolves for clicks',
+      deepClick.ok === true && deepClick.value.target.x === 149 && deepClick.value.target.y === 80, JSON.stringify(deepClick).slice(0, 300))
+    const deepContains = await send({ id: 'sd3', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Save As' })
+    check('visible text finds a shadow menu item', deepContains.ok === true && deepContains.value.target.tag === 'li', JSON.stringify(deepContains).slice(0, 300))
+    const topWins = await send({ id: 'sd4', action: 'click', sessionId: 'session-1', tabId: tab.tabId, selector: '[data-shared="dup"]' })
+    check('a top-level selector match does not fall through to a shadow match',
+      topWins.ok === true && topWins.value.target.label === 'Top Shared', JSON.stringify(topWins).slice(0, 300))
+
+    const pageSnapshot = await send({ id: 'sd5', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, maxElements: 200, maxNodes: 600 })
+    const pageText = String(pageSnapshot.value?.text ?? '')
+    check('a button inside a slotted ui5-bar in a deep same-origin iframe gets a ref',
+      pageSnapshot.ok === true && /"Next"\s*\[frame\]\s*\[shadow\]/.test(pageText) && /"Cancel"\s*\[frame\]\s*\[shadow\]/.test(pageText),
+      pageText)
+    check('box-less containers keep their children while display:none prunes them',
+      pageText.includes('"Zero Wrap Btn"') && pageText.includes('"Contents Btn"') && !pageText.includes('"Display None Btn"'),
+      pageText)
+    check('the rendered tab is listed while the unslotted 0x0 tab is not',
+      pageText.includes('tab "Outline" [shadow]') && !pageText.includes('Unassigned Tab'), pageText)
+    check('an empty inner slot falls back to the shadow host name',
+      pageText.includes('button "Host Fallback Label" [shadow]'), pageText)
+    const dedupMatches = pageText.match(/"Dedup Save"/g) ?? []
+    check('a host and its coinciding inner control are one ref, and decorative icons are skipped',
+      dedupMatches.length === 1 && !pageText.includes('ui5-icon'), pageText)
+
+    const searchFill = await send({ id: 'sd-search', action: 'type', sessionId: 'session-1', tabId: tab.tabId, contains: 'Catalog Search', text: 'blue' })
+    check('contains keeps the actual shadow input for a deduplicated host',
+      searchFill.ok === true && searchInput.value === 'blue', { target: searchFill.value?.target, error: searchFill.error })
+
+    const scopedMenu = await send({ id: 'sd6', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, scope: 'ui5-static-area-item' })
+    check('a scope on a shadow host lists the controls inside its shadow root',
+      scopedMenu.ok === true && scopedMenu.value.refs >= 1 && String(scopedMenu.value.text).includes('menuitem "Save As"'),
+      JSON.stringify(scopedMenu).slice(0, 300))
+    const scopedFrame = await send({ id: 'sd7', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, scope: '#sap-deep-frame' })
+    check('a scope on a same-origin iframe lists the controls inside it',
+      scopedFrame.ok === true && String(scopedFrame.value.text).includes('"Next"'), JSON.stringify(scopedFrame).slice(0, 300))
+
+    body.append(new FakeElement('button', { attrs: { id: 'top-next' }, text: 'Next' }))
+    const topContains = await send({ id: 'sd-top-contains', action: 'click', sessionId: 'session-1', tabId: tab.tabId, contains: 'Next' })
+    check('contains prefers a top-level match even after an iframe-scoped snapshot',
+      topContains.ok === true && topContains.value.target.selector === '#top-next',
+      topContains.value?.target ?? topContains.error)
+
+    const truncated = await send({ id: 'sd8', action: 'snapshot', sessionId: 'session-1', tabId: tab.tabId, maxNodes: 3 })
+    check('a truncated snapshot points at scope and maxNodes',
+      truncated.ok === true && truncated.value.truncated === true
+        && String(truncated.value.text).includes('scope') && String(truncated.value.text).includes('maxNodes'),
+      truncated.value?.text)
+  } finally {
+    body.children = savedBodyChildren
+    guestContext.__dshSidebarSnapshot = undefined
+    guestContext.__dshSidebarRefSeq = undefined
+  }
 
   // --- teardown stops polling ---
   stopBridge()
